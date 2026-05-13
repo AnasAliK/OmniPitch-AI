@@ -15,7 +15,7 @@ OmniPitch is a React Native (Expo) application designed to automate the translat
 ## Documentation
 
 For a detailed breakdown of how data flows through the application and how the Agentic Engine processes anomalies, please refer to:
-👉 **[Data Flow & Architecture Documentation](docs/data_flow.md)**
+👉 **[Data Flow & Architecture Documentation](omnipitch-app/docs/data_flow.md)**
 
 ## Setup & Installation
 
