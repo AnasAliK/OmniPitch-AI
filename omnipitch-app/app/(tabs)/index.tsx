@@ -229,8 +229,8 @@ export default function OmniPitchDashboard() {
           {isLoadingTeam ? (
             <View style={{ paddingVertical: 60, alignItems: 'center' }}>
               <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Running Playwright Scraper...</Text>
-              <Text style={{ color: '#475569', marginTop: 8, fontSize: 13, textAlign: 'center' }}>Extracting live data from FotMob for {TEAMS.find(t => t.id === selectedTeamId)?.shortName}</Text>
+              <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Fetching Live Squad Data...</Text>
+              <Text style={{ color: '#475569', marginTop: 8, fontSize: 13, textAlign: 'center' }}>Extracting live data for {TEAMS.find(t => t.id === selectedTeamId)?.shortName}</Text>
             </View>
           ) : !selectedPlayer ? (
             <Text style={{ color: '#94a3b8', textAlign: 'center', marginTop: 20 }}>No players found.</Text>
@@ -242,154 +242,154 @@ export default function OmniPitchDashboard() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: '#10b981' }}>Live Data Active</Text>
                   <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                    Last extracted: {selectedTeam.lastScrapedAt ? new Date(selectedTeam.lastScrapedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : 'Local Mock Data'}
+                    Last extracted: {selectedTeam.lastScrapedAt ? new Date(selectedTeam.lastScrapedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Local Mock Data'}
                   </Text>
                 </View>
               </View>
 
               {/* Roster */}
               <Text style={styles.sectionLabel}>Squad ({selectedTeam.players.length})</Text>
-          <View style={styles.card}>
-            {selectedTeam.players.map(p => (
-              <PlayerRow
-                key={p.id}
-                player={p}
-                isSelected={selectedPlayer.id === p.id}
-                hasIntervention={hasIntervention(p.id)}
-                onPress={() => { setSelectedPlayer(p); fadeAnim.setValue(0); }}
-              />
-            ))}
-          </View>
-
-        {/* Selected Player Detail */}
-        <View style={styles.detailHeader}>
-          <Text style={styles.sectionLabel}>Player Analysis</Text>
-          <View style={[styles.statusPill, { backgroundColor: statusColor + '20', borderColor: statusColor + '40' }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>{currentStatus}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.playerBanner}>
-            <View style={[styles.bigAvatar, { backgroundColor: selectedPlayer.avatarColor }]}>
-              <Text style={styles.bigAvatarText}>{selectedPlayer.avatarInitials}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.playerName}>{selectedPlayer.name}</Text>
-              <Text style={styles.playerMeta}>
-                {selectedPlayer.nationality} {selectedPlayer.position} • #{selectedPlayer.number} • Age {selectedPlayer.age}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.statsRow}>
-            <StatCard value={String(s.goals)} label="Goals" highlight={analysis.category === 'Technical'} />
-            <StatCard value={String(s.xG)} label="xG" />
-            <StatCard value={String(s.assists)} label="Assists" />
-            <StatCard value={String(s.xA)} label="xA" />
-          </View>
-          <View style={[styles.statsRow, { marginTop: 6 }]}>
-            <StatCard value={`${s.minutesPlayed}'`} label="Minutes" highlight={analysis.category === 'Physical'} />
-            <StatCard value={`${duelRate}%`} label="Duels" />
-            <StatCard value={`${s.passingAccuracy}%`} label="Pass %" />
-            {s.savePercentage !== undefined ? (
-              <StatCard value={`${s.savePercentage}%`} label="Save %" highlight={analysis.category === 'Tactical'} />
-            ) : (
-              <StatCard value={`${convRate}%`} label="Conv %" highlight={analysis.category === 'Technical'} />
-            )}
-          </View>
-        </View>
-
-        {/* Analysis Insight */}
-        {analysis.hasIssue && !isApplied && (
-          <View style={[styles.insightCard, { borderColor: severityColor[analysis.severity] + '40' }]}>
-            <View style={styles.insightHeader}>
-              <Text style={{ fontSize: 16 }}>🔍</Text>
-              <Text style={[styles.insightLabel, { color: severityColor[analysis.severity] }]}>{analysis.title}</Text>
-              <View style={[styles.confBadge, { backgroundColor: severityColor[analysis.severity] + '20' }]}>
-                <Text style={[styles.confText, { color: severityColor[analysis.severity] }]}>{analysis.confidence}%</Text>
+              <View style={styles.card}>
+                {selectedTeam.players.map(p => (
+                  <PlayerRow
+                    key={p.id}
+                    player={p}
+                    isSelected={selectedPlayer.id === p.id}
+                    hasIntervention={hasIntervention(p.id)}
+                    onPress={() => { setSelectedPlayer(p); fadeAnim.setValue(0); }}
+                  />
+                ))}
               </View>
-            </View>
-            <Text style={styles.insightBody}>{analysis.reasoning}</Text>
-            <View style={styles.indicatorRow}>
-              {analysis.indicators.map((ind, i) => (
-                <View key={i} style={[styles.indicator, { backgroundColor: ind.color + '15' }]}>
-                  <Text style={[styles.indValue, { color: ind.color }]}>{ind.value}</Text>
-                  <Text style={styles.indLabel}>{ind.label}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
-        {/* Intervention Applied — show schedule changes */}
-        {isApplied && (
-          <Animated.View style={[styles.appliedCard, { opacity: fadeAnim }]}>
-            <View style={styles.appliedHeader}>
-              <Text style={{ fontSize: 20 }}>✅</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.appliedTitle}>Intervention Applied — Schedule Modified</Text>
-                <Text style={styles.appliedScenario}>{analysis.title}</Text>
-              </View>
-            </View>
-            {playerOverrides.map((o, i) => (
-              <View key={i} style={styles.schedChangeRow}>
-                <View style={styles.schedOriginal}>
-                  <Text style={styles.schedStrike}>{o.originalSessionId === 'thu-morning' ? 'Team Tactical Session' : o.originalSessionId === 'thu-afternoon' ? 'Positional Play & Rondos' : o.originalSessionId === 'thu-gk' ? 'GK Distribution & Shot-Stopping' : o.originalSessionId === 'fri-morning' ? 'MD-1: Set Pieces' : o.originalSessionId}</Text>
+              {/* Selected Player Detail */}
+              <View style={styles.detailHeader}>
+                <Text style={styles.sectionLabel}>Player Analysis</Text>
+                <View style={[styles.statusPill, { backgroundColor: statusColor + '20', borderColor: statusColor + '40' }]}>
+                  <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                  <Text style={[styles.statusText, { color: statusColor }]}>{currentStatus}</Text>
                 </View>
-                <Text style={styles.schedArrow}>→</Text>
-                <View style={styles.schedNew}>
-                  <Text style={styles.schedNewIcon}>{o.replacementSession.icon}</Text>
+              </View>
+
+              <View style={styles.card}>
+                <View style={styles.playerBanner}>
+                  <View style={[styles.bigAvatar, { backgroundColor: selectedPlayer.avatarColor }]}>
+                    <Text style={styles.bigAvatarText}>{selectedPlayer.avatarInitials}</Text>
+                  </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.schedNewTitle}>{o.replacementSession.title}</Text>
-                    <Text style={styles.schedNewMeta}>{o.replacementSession.day} {o.replacementSession.time} • {o.replacementSession.duration}</Text>
+                    <Text style={styles.playerName}>{selectedPlayer.name}</Text>
+                    <Text style={styles.playerMeta}>
+                      {selectedPlayer.nationality} {selectedPlayer.position} • #{selectedPlayer.number} • Age {selectedPlayer.age}
+                    </Text>
                   </View>
                 </View>
+
+                <View style={styles.statsRow}>
+                  <StatCard value={String(s.goals)} label="Goals" highlight={analysis.category === 'Technical'} />
+                  <StatCard value={String(s.xG)} label="xG" />
+                  <StatCard value={String(s.assists)} label="Assists" />
+                  <StatCard value={String(s.xA)} label="xA" />
+                </View>
+                <View style={[styles.statsRow, { marginTop: 6 }]}>
+                  <StatCard value={`${s.minutesPlayed}'`} label="Minutes" highlight={analysis.category === 'Physical'} />
+                  <StatCard value={`${duelRate}%`} label="Duels" />
+                  <StatCard value={`${s.passingAccuracy}%`} label="Pass %" />
+                  {s.savePercentage !== undefined ? (
+                    <StatCard value={`${s.savePercentage}%`} label="Save %" highlight={analysis.category === 'Tactical'} />
+                  ) : (
+                    <StatCard value={`${convRate}%`} label="Conv %" highlight={analysis.category === 'Technical'} />
+                  )}
+                </View>
               </View>
-            ))}
-            <Text style={styles.appliedHint}>📅 View full schedule in the Schedule tab</Text>
-          </Animated.View>
-        )}
 
-        {/* Action Button */}
-        {analysis.hasIssue && (
-          <TouchableOpacity
-            style={[styles.actionBtn, isApplied && styles.actionBtnDone, isProcessing && styles.actionBtnProc]}
-            onPress={triggerIntervention}
-            disabled={isApplied || isProcessing}
-            activeOpacity={0.8}
-          >
-            <Animated.View style={[styles.actionInner, isProcessing && { opacity: pulseAnim }]}>
-              <Text style={{ fontSize: 18 }}>
-                {isProcessing ? '⏳' : isApplied ? '✅' : '🤖'}
-              </Text>
-              <View style={{ marginLeft: 10, flex: 1 }}>
-                <Text style={[styles.actionText, isApplied && { color: '#475569' }]}>
-                  {isProcessing ? 'Analyzing Performance Data...' : isApplied ? 'Intervention Applied' : 'Apply Intervention'}
-                </Text>
-                {!isApplied && !isProcessing && (
-                  <Text style={styles.actionSub}>Adjusts training schedule for {selectedPlayer.shortName}</Text>
-                )}
-              </View>
-            </Animated.View>
-          </TouchableOpacity>
-        )}
+              {/* Analysis Insight */}
+              {analysis.hasIssue && !isApplied && (
+                <View style={[styles.insightCard, { borderColor: severityColor[analysis.severity] + '40' }]}>
+                  <View style={styles.insightHeader}>
+                    <Text style={{ fontSize: 16 }}>🔍</Text>
+                    <Text style={[styles.insightLabel, { color: severityColor[analysis.severity] }]}>{analysis.title}</Text>
+                    <View style={[styles.confBadge, { backgroundColor: severityColor[analysis.severity] + '20' }]}>
+                      <Text style={[styles.confText, { color: severityColor[analysis.severity] }]}>{analysis.confidence}%</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.insightBody}>{analysis.reasoning}</Text>
+                  <View style={styles.indicatorRow}>
+                    {analysis.indicators.map((ind, i) => (
+                      <View key={i} style={[styles.indicator, { backgroundColor: ind.color + '15' }]}>
+                        <Text style={[styles.indValue, { color: ind.color }]}>{ind.value}</Text>
+                        <Text style={styles.indLabel}>{ind.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
 
-        {!analysis.hasIssue && (
-          <View style={styles.allGoodCard}>
-            <Text style={{ fontSize: 20 }}>✅</Text>
-            <Text style={styles.allGoodText}>No intervention needed. Performance within baselines.</Text>
-          </View>
-        )}
+              {/* Intervention Applied — show schedule changes */}
+              {isApplied && (
+                <Animated.View style={[styles.appliedCard, { opacity: fadeAnim }]}>
+                  <View style={styles.appliedHeader}>
+                    <Text style={{ fontSize: 20 }}>✅</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.appliedTitle}>Intervention Applied — Schedule Modified</Text>
+                      <Text style={styles.appliedScenario}>{analysis.title}</Text>
+                    </View>
+                  </View>
+                  {playerOverrides.map((o, i) => (
+                    <View key={i} style={styles.schedChangeRow}>
+                      <View style={styles.schedOriginal}>
+                        <Text style={styles.schedStrike}>{o.originalSessionId === 'thu-morning' ? 'Team Tactical Session' : o.originalSessionId === 'thu-afternoon' ? 'Positional Play & Rondos' : o.originalSessionId === 'thu-gk' ? 'GK Distribution & Shot-Stopping' : o.originalSessionId === 'fri-morning' ? 'MD-1: Set Pieces' : o.originalSessionId}</Text>
+                      </View>
+                      <Text style={styles.schedArrow}>→</Text>
+                      <View style={styles.schedNew}>
+                        <Text style={styles.schedNewIcon}>{o.replacementSession.icon}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.schedNewTitle}>{o.replacementSession.title}</Text>
+                          <Text style={styles.schedNewMeta}>{o.replacementSession.day} {o.replacementSession.time} • {o.replacementSession.duration}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                  <Text style={styles.appliedHint}>📅 View full schedule in the Schedule tab</Text>
+                </Animated.View>
+              )}
 
-        {isApplied && (
-          <TouchableOpacity style={styles.resetBtn} onPress={() => resetIntervention(selectedPlayer.id)}>
-            <Text style={styles.resetText}>↻ Reset Intervention for {selectedPlayer.shortName}</Text>
-          </TouchableOpacity>
-        )}
+              {/* Action Button */}
+              {analysis.hasIssue && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, isApplied && styles.actionBtnDone, isProcessing && styles.actionBtnProc]}
+                  onPress={triggerIntervention}
+                  disabled={isApplied || isProcessing}
+                  activeOpacity={0.8}
+                >
+                  <Animated.View style={[styles.actionInner, isProcessing && { opacity: pulseAnim }]}>
+                    <Text style={{ fontSize: 18 }}>
+                      {isProcessing ? '⏳' : isApplied ? '✅' : '🤖'}
+                    </Text>
+                    <View style={{ marginLeft: 10, flex: 1 }}>
+                      <Text style={[styles.actionText, isApplied && { color: '#475569' }]}>
+                        {isProcessing ? 'Analyzing Performance Data...' : isApplied ? 'Intervention Applied' : 'Apply Intervention'}
+                      </Text>
+                      {!isApplied && !isProcessing && (
+                        <Text style={styles.actionSub}>Adjusts training schedule for {selectedPlayer.shortName}</Text>
+                      )}
+                    </View>
+                  </Animated.View>
+                </TouchableOpacity>
+              )}
 
-        <View style={{ height: 30 }} />
+              {!analysis.hasIssue && (
+                <View style={styles.allGoodCard}>
+                  <Text style={{ fontSize: 20 }}>✅</Text>
+                  <Text style={styles.allGoodText}>No intervention needed. Performance within baselines.</Text>
+                </View>
+              )}
+
+              {isApplied && (
+                <TouchableOpacity style={styles.resetBtn} onPress={() => resetIntervention(selectedPlayer.id)}>
+                  <Text style={styles.resetText}>↻ Reset Intervention for {selectedPlayer.shortName}</Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={{ height: 30 }} />
             </>
           )}
         </View>
