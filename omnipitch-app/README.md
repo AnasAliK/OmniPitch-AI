@@ -37,7 +37,9 @@ node scripts/scraper.js
 *Note: This script opens a headless Edge browser to scrape FotMob and generates `data/teams.json`.*
 
 ### 3. Run the Application
+Start the server first to ensure real-time scraping works:
 ```bash
+node server.js
 npx expo start
 ```
 You can run the app via the Expo Go app on your phone, or press `a` to run on Android / `i` to run on an iOS simulator.
