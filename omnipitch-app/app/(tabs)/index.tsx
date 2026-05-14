@@ -8,6 +8,7 @@ import {
   Modal,
   Platform,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
@@ -111,8 +112,8 @@ const statStyles = StyleSheet.create({
 // ─── Main Dashboard ─────────────────────────────────────────────────────────
 
 export default function OmniPitchDashboard() {
-  const { selectedTeam, selectedTeamId, switchTeam, applyIntervention, resetIntervention, hasIntervention, overrides } = useApp();
-  const [selectedPlayer, setSelectedPlayer] = useState<Player>(selectedTeam.players[0]);
+  const { selectedTeam, selectedTeamId, switchTeam, applyIntervention, resetIntervention, hasIntervention, overrides, isLoadingTeam } = useApp();
+  const [selectedPlayer, setSelectedPlayer] = useState<Player>(selectedTeam.players[0] || null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [notifPayload, setNotifPayload] = useState<AnalysisResult | null>(null);
@@ -130,10 +131,10 @@ export default function OmniPitchDashboard() {
 
   useEffect(() => {
     // If the selected player isn't in the current team (because team switched), reset it
-    if (!selectedTeam.players.find(p => p.id === selectedPlayer.id)) {
+    if (selectedTeam?.players?.length > 0 && (!selectedPlayer || !selectedTeam.players.find(p => p.id === selectedPlayer.id))) {
       setSelectedPlayer(selectedTeam.players[0]);
     }
-  }, [selectedTeam, selectedPlayer.id]);
+  }, [selectedTeam, selectedPlayer?.id]);
 
   useEffect(() => {
     if (isApplied) {
@@ -225,8 +226,29 @@ export default function OmniPitchDashboard() {
             </View>
           </View>
 
-          {/* Roster */}
-          <Text style={styles.sectionLabel}>Squad ({selectedTeam.players.length})</Text>
+          {isLoadingTeam ? (
+            <View style={{ paddingVertical: 60, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Running Playwright Scraper...</Text>
+              <Text style={{ color: '#475569', marginTop: 8, fontSize: 13, textAlign: 'center' }}>Extracting live data from FotMob for {TEAMS.find(t => t.id === selectedTeamId)?.shortName}</Text>
+            </View>
+          ) : !selectedPlayer ? (
+            <Text style={{ color: '#94a3b8', textAlign: 'center', marginTop: 20 }}>No players found.</Text>
+          ) : (
+            <>
+              {/* Live Data Status */}
+              <View style={[styles.card, { padding: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: '#10b98110', borderColor: '#10b98130', marginBottom: 16 }]}>
+                <Text style={{ fontSize: 18, marginRight: 10 }}>📡</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#10b981' }}>Live Data Active</Text>
+                  <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                    Last extracted: {selectedTeam.lastScrapedAt ? new Date(selectedTeam.lastScrapedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : 'Local Mock Data'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Roster */}
+              <Text style={styles.sectionLabel}>Squad ({selectedTeam.players.length})</Text>
           <View style={styles.card}>
             {selectedTeam.players.map(p => (
               <PlayerRow
@@ -368,6 +390,8 @@ export default function OmniPitchDashboard() {
         )}
 
         <View style={{ height: 30 }} />
+            </>
+          )}
         </View>
       </ScrollView>
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { type PlayerOverride } from '@/data/schedule';
 import { generateInterventionSessions } from '@/data/schedule';
 import { TEAMS, analyzePlayer, type Player, type TeamData } from '@/data/team';
@@ -24,22 +24,68 @@ interface AppState {
   hasIntervention: (playerId: string) => boolean;
   /** Get overrides for a specific original session ID */
   getOverridesForSession: (originalSessionId: string) => PlayerOverride[];
+  /** Is the current team data being scraped/loaded? */
+  isLoadingTeam: boolean;
 }
 
 const AppContext = createContext<AppState | null>(null);
+
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 // ─── Provider ───────────────────────────────────────────────────────────────
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedTeamId, setSelectedTeamId] = useState<string>(TEAMS[0].id);
   const [overrides, setOverrides] = useState<Record<string, PlayerOverride[]>>({});
+  const [teamsDataState, setTeamsDataState] = useState<TeamData[]>(TEAMS);
+  const [isLoadingTeam, setIsLoadingTeam] = useState<boolean>(false);
 
-  const selectedTeam = TEAMS.find(t => t.id === selectedTeamId) || TEAMS[0];
+  const selectedTeam = teamsDataState.find(t => t.id === selectedTeamId) || teamsDataState[0];
 
-  const switchTeam = useCallback((teamId: string) => {
+  const switchTeam = useCallback(async (teamId: string) => {
     setSelectedTeamId(teamId);
     setOverrides({}); // Reset interventions when switching teams
+    
+    // Attempt real-time fetch from local server
+    setIsLoadingTeam(true);
+    try {
+      let serverUrl = 'http://localhost:3000';
+      if (Constants.expoConfig?.hostUri) {
+        // hostUri looks like '192.168.1.100:8081'
+        const ip = Constants.expoConfig.hostUri.split(':')[0];
+        serverUrl = `http://${ip}:3000`;
+      } else if (Platform.OS === 'android') {
+        serverUrl = 'http://10.0.2.2:3000';
+      }
+      
+      const response = await fetch(`${serverUrl}/api/scrape/${teamId}`);
+      if (response.ok) {
+        const freshData = await response.json();
+        setTeamsDataState(prev => {
+          const newTeams = [...prev];
+          const idx = newTeams.findIndex(t => t.id === teamId);
+          if (idx !== -1) {
+            newTeams[idx] = freshData;
+          } else {
+            newTeams.push(freshData);
+          }
+          return newTeams;
+        });
+      } else {
+        console.warn('Local scraper server responded with an error. Using cached data.');
+      }
+    } catch (error) {
+      console.warn('Could not connect to local scraper server. Ensure node server.js is running. Using cached data.', error);
+    } finally {
+      setIsLoadingTeam(false);
+    }
   }, []);
+
+  useEffect(() => {
+    // Trigger initial scrape on app start
+    switchTeam(TEAMS[0].id);
+  }, [switchTeam]);
 
   const applyIntervention = useCallback((player: Player) => {
     const analysis = analyzePlayer(player);
@@ -107,6 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetAll,
       hasIntervention,
       getOverridesForSession,
+      isLoadingTeam,
     }}>
       {children}
     </AppContext.Provider>

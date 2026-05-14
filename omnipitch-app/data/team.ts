@@ -43,6 +43,7 @@ export interface TeamData {
   league: string;
   season: string;
   manager: string;
+  lastScrapedAt?: string;
   players: Player[];
 }
 
