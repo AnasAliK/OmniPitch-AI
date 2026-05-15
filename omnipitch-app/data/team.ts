@@ -35,6 +35,7 @@ export interface Player {
   status: PlayerStatus;
   avatarInitials: string;
   avatarColor: string;
+  imageUrl?: string;
 }
 
 export interface TeamData {
@@ -78,7 +79,7 @@ export interface AnalysisResult {
 
 // ─── Position-Specific Baselines ────────────────────────────────────────────
 
-interface Baseline {
+export interface Baseline {
   minConversion?: number;
   maxXgGap?: number;
   minDuelRate: number;
@@ -88,7 +89,7 @@ interface Baseline {
   maxCounterGoals?: number;
 }
 
-function getBaseline(pos: Position): Baseline {
+export function getBaseline(pos: Position): Baseline {
   const attacking = ['ST', 'LW', 'RW', 'CAM'].includes(pos);
   const midfield = ['CM', 'CDM'].includes(pos);
   const defense = ['CB', 'LB', 'RB'].includes(pos);
@@ -257,28 +258,84 @@ export function analyzePlayer(player: Player): AnalysisResult {
 }
 
 function generateIntervention(category: IssueCategory, anomalies: Anomaly[], player: Player) {
+  const metrics = anomalies.map(a => a.metric);
+  const isGK = player.position === 'GK';
+  const isDef = ['CB', 'LB', 'RB'].includes(player.position);
+  
   if (category === 'Technical') {
+    if (metrics.includes('xG Conversion') || metrics.includes('Shot Conversion')) {
+      return {
+        primary: `Clinical Finishing & 1v1 Drills for ${player.position}`,
+        secondary: 'Video analysis: Reviewing shot selection & keeper positioning',
+        duration: '48h Technical Focus Block',
+        statusChange: 'Technical Focus' as PlayerStatus,
+      };
+    }
+    if (metrics.includes('Passing Accuracy')) {
+      return {
+        primary: 'Distribution & Playmaking Under Pressure',
+        secondary: 'Rondo sessions with constrained touches',
+        duration: '48h Distribution Block',
+        statusChange: 'Technical Focus' as PlayerStatus,
+      };
+    }
     return {
-      primary: '1v1 Finishing & Composure Drills',
-      secondary: 'Video analysis of missed chances with coaching staff',
-      duration: '48h adjusted training block',
+      primary: 'Core Technical Mechanics Review',
+      secondary: 'Individual skill refinement session with coaches',
+      duration: '48h Technical Focus Block',
       statusChange: 'Technical Focus' as PlayerStatus,
     };
   }
+
   if (category === 'Physical') {
-    const hasMinutesOverload = anomalies.some(a => a.metric === 'Minutes Load');
+    if (metrics.includes('Minutes Load')) {
+      return {
+        primary: 'Load Reduction & Hydrotherapy',
+        secondary: 'Complete rest from high-intensity interval training',
+        duration: '72h Recovery Protocol',
+        statusChange: 'Recovery' as PlayerStatus,
+      };
+    }
+    if (metrics.includes('Sprint Output') || metrics.includes('Heatmap Coverage')) {
+      return {
+        primary: 'Conditioning Assessment & Light Aerobic Work',
+        secondary: 'Physio evaluation for underlying fatigue or minor strain',
+        duration: '48h Active Recovery',
+        statusChange: 'Recovery' as PlayerStatus,
+      };
+    }
+    if (metrics.includes('Duel Win Rate')) {
+      return {
+        primary: 'Strength & Core Stability Focus',
+        secondary: 'Gym session targeting lower body power and balance',
+        duration: '48h Physical Conditioning',
+        statusChange: 'Recovery' as PlayerStatus,
+      };
+    }
+  }
+
+  // Tactical
+  if (isGK && (metrics.includes('Save Percentage') || metrics.includes('Counter-Attack Goals'))) {
     return {
-      primary: hasMinutesOverload ? 'Hydrotherapy & Load Reduction' : 'Active Recovery Protocol',
-      secondary: 'Remove from high-intensity sessions, physio monitoring',
-      duration: '72h recovery protocol',
-      statusChange: 'Recovery' as PlayerStatus,
+      primary: 'Shot Stopping & 1v1 Positioning',
+      secondary: 'Goalkeeper-specific video analysis on starting positions',
+      duration: '24h Tactical GK Review',
+      statusChange: 'Tactical Review' as PlayerStatus,
     };
   }
-  // Tactical
+  if (isDef && metrics.includes('Duel Win Rate')) {
+    return {
+      primary: 'Defensive Positioning & 1v1 Defending',
+      secondary: 'Shape review with defensive unit against overloaded attacks',
+      duration: '24h Defensive Shape Block',
+      statusChange: 'Tactical Review' as PlayerStatus,
+    };
+  }
+  
   return {
-    primary: 'Tactical Review & Shape Adjustment',
-    secondary: 'Video session on structural vulnerabilities with defensive unit',
-    duration: '24h tactical focus block',
+    primary: 'Positional Shape & Spatial Awareness',
+    secondary: `Video session analyzing ${player.position} positional responsibilities`,
+    duration: '24h Tactical Focus Block',
     statusChange: 'Tactical Review' as PlayerStatus,
   };
 }

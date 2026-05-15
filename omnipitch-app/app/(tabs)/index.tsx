@@ -9,12 +9,13 @@ import {
   Platform,
   Animated,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
 import { useApp } from '@/context/AppContext';
-
+import { TeamPerformanceSummary, PlayerStatBars, PhysicalOutputTracker } from '@/components/DashboardVisuals';
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const severityColor: Record<string, string> = {
@@ -38,18 +39,19 @@ function PlayerRow({ player, onPress, isSelected, hasIntervention }: {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={[rowStyles.container, isSelected && rowStyles.selected]}>
       {isSelected && <View style={[rowStyles.selectedBar, { backgroundColor: statusCol }]} />}
-      <View style={[rowStyles.avatar, { backgroundColor: player.avatarColor }]}>
-        <Text style={rowStyles.avatarText}>{player.avatarInitials}</Text>
+      <View style={[rowStyles.avatar, { backgroundColor: player.avatarColor, overflow: 'hidden' }]}>
+        {player.imageUrl ? (
+          <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <Text style={rowStyles.avatarText}>{player.avatarInitials}</Text>
+        )}
       </View>
-      <View style={rowStyles.info}>
-        <Text style={rowStyles.name}>{player.shortName}</Text>
-        <View style={rowStyles.metaRow}>
-          <View style={[rowStyles.posBadge, { borderColor: posColor + '60' }]}>
-            <Text style={[rowStyles.posText, { color: posColor }]}>{player.position}</Text>
-          </View>
-          <Text style={rowStyles.number}>#{player.number}</Text>
-          <Text style={rowStyles.flag}>{player.nationality}</Text>
+      <Text style={rowStyles.name} numberOfLines={1}>{player.shortName}</Text>
+      <View style={rowStyles.metaRow}>
+        <View style={[rowStyles.posBadge, { borderColor: posColor + '60' }]}>
+          <Text style={[rowStyles.posText, { color: posColor }]}>{player.position}</Text>
         </View>
+        <Text style={rowStyles.number}>#{player.number}</Text>
       </View>
       <View style={[rowStyles.statusChip, { backgroundColor: statusCol + '18', borderColor: statusCol + '50' }]}>
         <View style={[rowStyles.statusDot, { backgroundColor: statusCol }]} />
@@ -61,24 +63,22 @@ function PlayerRow({ player, onPress, isSelected, hasIntervention }: {
 
 const rowStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 12,
-    borderRadius: 14, marginBottom: 6, backgroundColor: '#0a1628',
+    width: '48%', flexDirection: 'column', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 8,
+    borderRadius: 14, marginBottom: 12, backgroundColor: '#0a1628',
     borderWidth: 1, borderColor: '#142035', overflow: 'hidden',
   },
   selected: {
     backgroundColor: '#0d2242', borderColor: '#1e3d70',
     shadowColor: '#3b82f6', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4,
   },
-  selectedBar: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2 },
+  selectedBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },
   avatar: {
-    width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center',
-    marginRight: 12,
+    width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center',
+    marginBottom: 8,
   },
-  avatarText: { fontSize: 15, fontWeight: '900', color: '#fff' },
-  info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '800', color: '#e2eeff', letterSpacing: 0.1 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 7 },
-  flag: { fontSize: 12 },
+  avatarText: { fontSize: 16, fontWeight: '900', color: '#fff' },
+  name: { fontSize: 13, fontWeight: '800', color: '#e2eeff', letterSpacing: 0.1, marginBottom: 4, textAlign: 'center' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6 },
   posBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1 },
   posText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
   number: { fontSize: 11, color: '#2d4a6e', fontWeight: '700' },
@@ -244,9 +244,12 @@ export default function OmniPitchDashboard() {
                 </View>
               </View>
 
-              {/* Roster */}
+              {/* Team Performance Visualizations */}
+              <TeamPerformanceSummary team={selectedTeam} />
+
+              {/* Roster Grid */}
               <Text style={styles.sectionLabel}>Squad ({selectedTeam.players.length})</Text>
-              <View style={styles.card}>
+              <View style={[styles.card, { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', padding: 12 }]}>
                 {selectedTeam.players.map(p => (
                   <PlayerRow
                     key={p.id}
@@ -269,8 +272,12 @@ export default function OmniPitchDashboard() {
 
               <View style={styles.card}>
                 <View style={styles.playerBanner}>
-                  <View style={[styles.bigAvatar, { backgroundColor: selectedPlayer.avatarColor }]}>
-                    <Text style={styles.bigAvatarText}>{selectedPlayer.avatarInitials}</Text>
+                  <View style={[styles.bigAvatar, { backgroundColor: selectedPlayer.avatarColor, overflow: 'hidden' }]}>
+                    {selectedPlayer.imageUrl ? (
+                      <Image source={{ uri: selectedPlayer.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    ) : (
+                      <Text style={styles.bigAvatarText}>{selectedPlayer.avatarInitials}</Text>
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.playerName}>{selectedPlayer.name}</Text>
@@ -295,6 +302,16 @@ export default function OmniPitchDashboard() {
                   ) : (
                     <StatCard value={`${convRate}%`} label="Conv %" highlight={analysis.category === 'Technical'} />
                   )}
+                </View>
+
+                {/* Enhanced Player Visuals */}
+                <View style={{ flexDirection: 'row', marginTop: 10, borderTopWidth: 1, borderTopColor: '#1a2840', paddingTop: 10 }}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <PlayerStatBars player={selectedPlayer} />
+                  </View>
+                  <View style={{ flex: 1, paddingLeft: 10, borderLeftWidth: 1, borderLeftColor: '#1a2840' }}>
+                    <PhysicalOutputTracker player={selectedPlayer} />
+                  </View>
                 </View>
               </View>
 

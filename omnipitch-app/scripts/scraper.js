@@ -80,6 +80,7 @@ async function scrapeTeams() {
                  age: m.age || 25,
                  avatarInitials: m.name.substring(0, 2).toUpperCase(),
                  avatarColor: group.title === 'keepers' ? '#f59e0b' : (isDefender ? '#3b82f6' : (isAttacker ? '#ef4444' : '#10b981')),
+                 imageUrl: `https://images.fotmob.com/image_resources/playerimages/${m.id}.png`,
                  status: 'Active',
                  stats: {
                     matchCount,
