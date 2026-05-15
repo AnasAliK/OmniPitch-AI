@@ -10,6 +10,7 @@ import {
   UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
 import { useApp } from '@/context/AppContext';
 
@@ -207,10 +208,17 @@ export default function AgentTraceScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Agent Trace</Text>
-          <Text style={styles.headerSub}>OODA Loop • Dynamic Analysis</Text>
-        </View>
+        <LinearGradient
+          colors={['#112060', '#071428']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <Text style={styles.heroEyebrow}>🧠  OODA LOOP</Text>
+          <Text style={styles.heroTitle}>Agent Trace</Text>
+          <Text style={styles.heroSub}>Dynamic Performance Analysis</Text>
+        </LinearGradient>
+
+        <View style={styles.content}>
 
         {/* Player Selector */}
         <Text style={styles.sectionLabel}>Select Player</Text>
@@ -264,7 +272,7 @@ export default function AgentTraceScreen() {
           <TraceStep key={step.id + selectedId} step={step} isLast={i === steps.length - 1} />
         ))}
 
-        <View style={{ height: 30 }} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -273,52 +281,65 @@ export default function AgentTraceScreen() {
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f172a' },
-  scroll: { flex: 1, padding: 16 },
-  header: { marginBottom: 24, paddingTop: Platform.OS === 'android' ? 10 : 0 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#f1f5f9', letterSpacing: -0.5 },
-  headerSub: { fontSize: 13, color: '#64748b', marginTop: 4 },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#e2e8f0', marginBottom: 8 },
-  hint: { fontSize: 12, color: '#475569', marginBottom: 16 },
+  safe: { flex: 1, backgroundColor: '#050c18' },
+  scroll: { flex: 1 },
+  hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 22, paddingHorizontal: 16 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 28, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
+  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6 },
+  content: { padding: 16 },
+  sectionLabel: {
+    fontSize: 10, fontWeight: '900', color: '#2d4a6e',
+    marginBottom: 8, letterSpacing: 1.5, textTransform: 'uppercase',
+  },
+  hint: { fontSize: 12, color: '#1a2d48', marginBottom: 16 },
   selectorScroll: { marginBottom: 20, marginHorizontal: -4 },
   selectorChip: {
-    backgroundColor: '#1e293b', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
-    marginHorizontal: 4, borderWidth: 1, borderColor: '#334155', flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#08142a', borderRadius: 11, paddingHorizontal: 14, paddingVertical: 9,
+    marginHorizontal: 4, borderWidth: 1, borderColor: '#0f2040',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  selectorChipActive: { backgroundColor: '#3b82f620', borderColor: '#3b82f6' },
-  selectorText: { fontSize: 13, color: '#94a3b8', fontWeight: '600' },
-  selectorTextActive: { color: '#3b82f6' },
-  selectorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444' },
+  selectorChipActive: { backgroundColor: '#1e4db7', borderColor: '#3b82f6' },
+  selectorText: { fontSize: 13, color: '#2d4a6e', fontWeight: '700' },
+  selectorTextActive: { color: '#fff' },
+  selectorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' },
   summaryCard: {
-    backgroundColor: '#1e293b', borderRadius: 14, padding: 16, marginBottom: 24,
-    borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#08142a', borderRadius: 16, padding: 16, marginBottom: 24,
+    borderWidth: 1, borderColor: '#0f2040',
   },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
-  divider: { height: 1, backgroundColor: '#334155' },
-  sumLabel: { fontSize: 14, color: '#64748b', fontWeight: '500' },
-  sumValue: { fontSize: 14, color: '#e2e8f0', fontWeight: '700' },
-  scenBadge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'transparent' },
-  scenText: { fontSize: 12, fontWeight: '700' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11 },
+  divider: { height: 1, backgroundColor: '#0f2040' },
+  sumLabel: { fontSize: 13, color: '#2d4a6e', fontWeight: '600' },
+  sumValue: { fontSize: 14, color: '#c8d8f0', fontWeight: '800' },
+  scenBadge: { borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: 'transparent' },
+  scenText: { fontSize: 12, fontWeight: '800' },
 });
 
 const traceStyles = StyleSheet.create({
   stepContainer: { flexDirection: 'row', marginBottom: 0 },
-  timelineCol: { width: 44, alignItems: 'center' },
-  dot: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  dotEmoji: { fontSize: 16 },
-  line: { width: 2, flex: 1, marginVertical: 4 },
+  timelineCol: { width: 46, alignItems: 'center' },
+  dot: {
+    width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+  },
+  dotEmoji: { fontSize: 17 },
+  line: { width: 2, flex: 1, marginVertical: 4, borderRadius: 1 },
   contentCard: {
-    flex: 1, backgroundColor: '#1e293b', borderRadius: 12, padding: 14, marginLeft: 10, marginBottom: 14,
-    borderWidth: 1, borderColor: '#334155',
+    flex: 1, backgroundColor: '#0d1826', borderRadius: 14, padding: 14, marginLeft: 10, marginBottom: 14,
+    borderWidth: 1, borderColor: '#1a2840',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  phase: { fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 2 },
-  stepTitle: { fontSize: 16, fontWeight: '800', color: '#f1f5f9' },
-  stepSub: { fontSize: 11, color: '#64748b', marginTop: 2 },
-  expandIcon: { fontSize: 11, color: '#475569', marginTop: 4 },
-  codeBlock: { backgroundColor: '#0f172a', borderRadius: 8, padding: 12, marginTop: 12 },
+  phase: { fontSize: 9, fontWeight: '900', letterSpacing: 1.5, marginBottom: 2 },
+  stepTitle: { fontSize: 16, fontWeight: '900', color: '#dde8fb', letterSpacing: -0.3 },
+  stepSub: { fontSize: 11, color: '#3d5068', marginTop: 3, fontWeight: '600' },
+  expandIcon: { fontSize: 11, color: '#3d5068', marginTop: 4 },
+  codeBlock: {
+    backgroundColor: '#080d16', borderRadius: 10, padding: 13, marginTop: 12,
+    borderWidth: 1, borderColor: '#1a2840',
+  },
   codeText: {
-    fontSize: 11, color: '#94a3b8', lineHeight: 18,
+    fontSize: 11, color: '#7a90b0', lineHeight: 19,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });

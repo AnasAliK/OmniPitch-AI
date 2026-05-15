@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
 import { useApp } from '@/context/AppContext';
 
@@ -31,67 +32,62 @@ function PlayerRow({ player, onPress, isSelected, hasIntervention }: {
   const analysis = analyzePlayer(player);
   const posColor = getPositionColor(player.position);
   const hasProblem = analysis.type !== 'none';
+  const statusCol = hasIntervention ? '#f59e0b' : hasProblem ? severityColor[analysis.severity] : '#22c55e';
+  const statusLabel = hasIntervention ? 'MOD' : hasProblem ? (analysis.severity === 'critical' ? 'CRIT' : 'ALRT') : 'OK';
 
   return (
-    <TouchableOpacity
-      style={[rowStyles.container, isSelected && rowStyles.selected]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={[rowStyles.avatar, { backgroundColor: player.avatarColor + '25' }]}>
-        <Text style={[rowStyles.avatarText, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={[rowStyles.container, isSelected && rowStyles.selected]}>
+      {isSelected && <View style={[rowStyles.selectedBar, { backgroundColor: statusCol }]} />}
+      <View style={[rowStyles.avatar, { backgroundColor: player.avatarColor }]}>
+        <Text style={rowStyles.avatarText}>{player.avatarInitials}</Text>
       </View>
       <View style={rowStyles.info}>
         <Text style={rowStyles.name}>{player.shortName}</Text>
         <View style={rowStyles.metaRow}>
-          <Text style={rowStyles.flag}>{player.nationality}</Text>
-          <View style={[rowStyles.posBadge, { backgroundColor: posColor + '20' }]}>
+          <View style={[rowStyles.posBadge, { borderColor: posColor + '60' }]}>
             <Text style={[rowStyles.posText, { color: posColor }]}>{player.position}</Text>
           </View>
           <Text style={rowStyles.number}>#{player.number}</Text>
+          <Text style={rowStyles.flag}>{player.nationality}</Text>
         </View>
       </View>
-      {hasIntervention ? (
-        <View style={[rowStyles.alertBadge, { backgroundColor: '#f59e0b20' }]}>
-          <Text style={[rowStyles.alertText, { color: '#f59e0b' }]}>MODIFIED</Text>
-        </View>
-      ) : hasProblem ? (
-        <View style={[rowStyles.alertBadge, { backgroundColor: severityColor[analysis.severity] + '20' }]}>
-          <View style={[rowStyles.alertDot, { backgroundColor: severityColor[analysis.severity] }]} />
-          <Text style={[rowStyles.alertText, { color: severityColor[analysis.severity] }]}>
-            {analysis.severity === 'critical' ? 'CRIT' : 'ALERT'}
-          </Text>
-        </View>
-      ) : (
-        <View style={[rowStyles.alertBadge, { backgroundColor: '#10b98115' }]}>
-          <Text style={[rowStyles.alertText, { color: '#10b981' }]}>OK</Text>
-        </View>
-      )}
+      <View style={[rowStyles.statusChip, { backgroundColor: statusCol + '18', borderColor: statusCol + '50' }]}>
+        <View style={[rowStyles.statusDot, { backgroundColor: statusCol }]} />
+        <Text style={[rowStyles.statusText, { color: statusCol }]}>{statusLabel}</Text>
+      </View>
     </TouchableOpacity>
   );
 }
 
 const rowStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14,
-    borderRadius: 12, marginBottom: 6, backgroundColor: 'transparent',
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 12,
+    borderRadius: 14, marginBottom: 6, backgroundColor: '#0a1628',
+    borderWidth: 1, borderColor: '#142035', overflow: 'hidden',
   },
-  selected: { backgroundColor: '#1e3a5f', borderWidth: 1, borderColor: '#3b82f640' },
-  avatar: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  avatarText: { fontSize: 14, fontWeight: '800' },
+  selected: {
+    backgroundColor: '#0d2242', borderColor: '#1e3d70',
+    shadowColor: '#3b82f6', shadowOpacity: 0.2, shadowRadius: 10, elevation: 4,
+  },
+  selectedBar: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2 },
+  avatar: {
+    width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: { fontSize: 15, fontWeight: '900', color: '#fff' },
   info: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '700', color: '#f1f5f9' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 6 },
-  flag: { fontSize: 14 },
-  posBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 },
-  posText: { fontSize: 10, fontWeight: '800' },
-  number: { fontSize: 12, color: '#475569' },
-  alertBadge: {
+  name: { fontSize: 14, fontWeight: '800', color: '#e2eeff', letterSpacing: 0.1 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 7 },
+  flag: { fontSize: 12 },
+  posBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1 },
+  posText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+  number: { fontSize: 11, color: '#2d4a6e', fontWeight: '700' },
+  statusChip: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 4, gap: 4,
+    paddingHorizontal: 8, paddingVertical: 5, gap: 5, borderWidth: 1,
   },
-  alertDot: { width: 6, height: 6, borderRadius: 3 },
-  alertText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  statusDot: { width: 5, height: 5, borderRadius: 3 },
+  statusText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
 });
 
 function StatCard({ value, label, highlight }: { value: string; label: string; highlight?: boolean }) {
@@ -104,9 +100,13 @@ function StatCard({ value, label, highlight }: { value: string; label: string; h
 }
 
 const statStyles = StyleSheet.create({
-  card: { backgroundColor: '#0f172a', borderRadius: 10, padding: 12, alignItems: 'center', flex: 1, marginHorizontal: 3 },
-  value: { fontSize: 18, fontWeight: '800', color: '#f1f5f9' },
-  label: { fontSize: 10, color: '#64748b', marginTop: 3, textAlign: 'center' },
+  card: {
+    backgroundColor: '#080d16', borderRadius: 12, padding: 13,
+    alignItems: 'center', flex: 1, marginHorizontal: 3,
+    borderWidth: 1, borderColor: '#1a2840',
+  },
+  value: { fontSize: 19, fontWeight: '900', color: '#dde8fb', letterSpacing: -0.5 },
+  label: { fontSize: 9, color: '#3d5068', marginTop: 4, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 },
 });
 
 // ─── Main Dashboard ─────────────────────────────────────────────────────────
@@ -182,50 +182,47 @@ export default function OmniPitchDashboard() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Team Selector */}
-        <View style={styles.teamSelector}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 16 }}>
+        {/* ── Hero Header ── */}
+        <LinearGradient
+          colors={['#112060', '#071428']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <View style={styles.heroRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroEyebrow}>⚽  OMNIPITCH AI</Text>
+              <Text style={styles.heroTitle}>{selectedTeam.name}</Text>
+              <Text style={styles.heroSub}>🧑‍💼 {selectedTeam.manager}</Text>
+            </View>
+            <View style={styles.heroCounters}>
+              <View style={styles.heroCounter}>
+                <Text style={[styles.heroCountNum, { color: '#f87171' }]}>{alertCount}</Text>
+                <Text style={styles.heroCountLabel}>Alerts</Text>
+              </View>
+              {modifiedCount > 0 && (
+                <View style={[styles.heroCounter, { borderColor: '#f59e0b40' }]}>
+                  <Text style={[styles.heroCountNum, { color: '#f59e0b' }]}>{modifiedCount}</Text>
+                  <Text style={styles.heroCountLabel}>Modified</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamPills}>
             {TEAMS.map(team => (
               <TouchableOpacity
                 key={team.id}
-                style={[
-                  styles.teamTab,
-                  selectedTeamId === team.id ? styles.teamTabActive : styles.teamTabInactive
-                ]}
+                style={[styles.teamPill, selectedTeamId === team.id && styles.teamPillActive]}
                 onPress={() => switchTeam(team.id)}
               >
-                <Text style={[
-                  styles.teamTabText,
-                  selectedTeamId === team.id ? styles.teamTabTextActive : styles.teamTabTextInactive
-                ]}>
+                <Text style={[styles.teamPillText, selectedTeamId === team.id && styles.teamPillTextActive]}>
                   {team.shortName}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
+        </LinearGradient>
 
         <View style={{ paddingHorizontal: 16 }}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>OmniPitch</Text>
-              <Text style={styles.subtitle}>{selectedTeam.name} • {selectedTeam.manager}</Text>
-            </View>
-            <View style={styles.headerBadges}>
-              <View style={styles.alertCounter}>
-                <Text style={{ fontSize: 12 }}>⚠️</Text>
-                <Text style={styles.alertNum}>{alertCount}</Text>
-              </View>
-              {modifiedCount > 0 && (
-                <View style={[styles.alertCounter, { borderColor: '#f59e0b40' }]}>
-                  <Text style={{ fontSize: 12 }}>📅</Text>
-                  <Text style={[styles.alertNum, { color: '#f59e0b' }]}>{modifiedCount}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-
           {isLoadingTeam ? (
             <View style={{ paddingVertical: 60, alignItems: 'center' }}>
               <ActivityIndicator size="large" color="#3b82f6" />
@@ -426,114 +423,123 @@ export default function OmniPitchDashboard() {
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f172a' },
+  safe: { flex: 1, backgroundColor: '#050c18' },
   scroll: { flex: 1 },
-  teamSelector: { marginBottom: 15, marginTop: 10 },
-  teamTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
-  teamTabActive: { backgroundColor: '#3b82f620', borderColor: '#3b82f6' },
-  teamTabInactive: { backgroundColor: '#1e293b', borderColor: '#334155' },
-  teamTabText: { fontSize: 13, fontWeight: '700' },
-  teamTabTextActive: { color: '#3b82f6' },
-  teamTabTextInactive: { color: '#64748b' },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 24, paddingTop: Platform.OS === 'android' ? 10 : 0,
+  hero: { paddingTop: Platform.OS === 'android' ? 16 : 10, paddingBottom: 18, paddingHorizontal: 16 },
+  heroRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 18 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 26, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5, lineHeight: 30 },
+  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6, fontWeight: '500' },
+  heroCounters: { gap: 8, alignItems: 'flex-end' },
+  heroCounter: {
+    alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 62,
   },
-  title: { fontSize: 26, fontWeight: '800', color: '#f1f5f9', letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: '#64748b', marginTop: 2 },
-  headerBadges: { flexDirection: 'row', gap: 8 },
-  alertCounter: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b',
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: '#334155', gap: 5,
+  heroCountNum: { fontSize: 22, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
+  heroCountLabel: { fontSize: 9, color: '#3b6cc0', fontWeight: '800', letterSpacing: 1, marginTop: 2, textTransform: 'uppercase' },
+  teamPills: { gap: 8, paddingBottom: 2 },
+  teamPill: {
+    paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
   },
-  alertNum: { fontSize: 13, fontWeight: '800', color: '#ef4444' },
-  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#e2e8f0', marginBottom: 10 },
+  teamPillActive: { backgroundColor: '#1e4db7', borderColor: '#3b82f6' },
+  teamPillText: { fontSize: 13, fontWeight: '700', color: '#4a6fa5' },
+  teamPillTextActive: { color: '#fff' },
+  sectionLabel: {
+    fontSize: 10, fontWeight: '900', color: '#2d4a6e',
+    marginBottom: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4,
+  },
   card: {
-    backgroundColor: '#1e293b', borderRadius: 14, padding: 12, marginBottom: 20,
-    borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#08142a', borderRadius: 16, padding: 12, marginBottom: 20,
+    borderWidth: 1, borderColor: '#0f2040',
   },
   detailHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   statusPill: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 5,
     borderRadius: 10, borderWidth: 1, marginBottom: 10,
   },
   statusDot: { width: 7, height: 7, borderRadius: 4, marginRight: 6 },
-  statusText: { fontSize: 11, fontWeight: '700' },
+  statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
   playerBanner: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  bigAvatar: { width: 50, height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
-  bigAvatarText: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  playerName: { fontSize: 17, fontWeight: '700', color: '#f1f5f9' },
-  playerMeta: { fontSize: 13, color: '#64748b', marginTop: 2 },
+  bigAvatar: {
+    width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center',
+    marginRight: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)',
+  },
+  bigAvatarText: { color: '#fff', fontSize: 20, fontWeight: '900' },
+  playerName: { fontSize: 18, fontWeight: '800', color: '#dde8fb', letterSpacing: -0.3 },
+  playerMeta: { fontSize: 12, color: '#3d5068', marginTop: 3, fontWeight: '500' },
   statsRow: { flexDirection: 'row' },
   insightCard: {
-    backgroundColor: '#172554', borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1,
+    backgroundColor: '#091426', borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 1,
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
   },
   insightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-  insightLabel: { fontSize: 14, fontWeight: '700', flex: 1 },
-  confBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  confText: { fontSize: 11, fontWeight: '800' },
-  insightBody: { fontSize: 14, color: '#cbd5e1', lineHeight: 22, marginBottom: 12 },
+  insightLabel: { fontSize: 14, fontWeight: '800', flex: 1, letterSpacing: 0.1 },
+  confBadge: { borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 },
+  confText: { fontSize: 11, fontWeight: '900' },
+  insightBody: { fontSize: 13, color: '#7a90b0', lineHeight: 21, marginBottom: 12 },
   indicatorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   indicator: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
-  indValue: { fontSize: 13, fontWeight: '700' },
-  indLabel: { fontSize: 10, color: '#64748b', marginTop: 2 },
+  indValue: { fontSize: 13, fontWeight: '800' },
+  indLabel: { fontSize: 10, color: '#3d5068', marginTop: 2, fontWeight: '600' },
   appliedCard: {
-    backgroundColor: '#1e293b', borderRadius: 14, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: '#10b98130',
+    backgroundColor: '#0d1826', borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: '#22d3a030',
+    shadowColor: '#22d3a0', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
   },
   appliedHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  appliedTitle: { fontSize: 14, fontWeight: '700', color: '#10b981' },
-  appliedScenario: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  schedChangeRow: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8,
-  },
-  schedOriginal: {
-    flex: 1, backgroundColor: '#0f172a', borderRadius: 8, padding: 10,
-  },
-  schedStrike: { fontSize: 12, color: '#64748b', textDecorationLine: 'line-through' },
-  schedArrow: { fontSize: 16, color: '#f59e0b', fontWeight: '800' },
+  appliedTitle: { fontSize: 14, fontWeight: '800', color: '#22d3a0' },
+  appliedScenario: { fontSize: 12, color: '#3d5068', marginTop: 2 },
+  schedChangeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
+  schedOriginal: { flex: 1, backgroundColor: '#080d16', borderRadius: 9, padding: 10 },
+  schedStrike: { fontSize: 12, color: '#3d5068', textDecorationLine: 'line-through' },
+  schedArrow: { fontSize: 16, color: '#fbbf24', fontWeight: '900' },
   schedNew: {
-    flex: 1.5, flexDirection: 'row', backgroundColor: '#f59e0b10', borderRadius: 8, padding: 10,
-    borderWidth: 1, borderColor: '#f59e0b25', gap: 8,
+    flex: 1.5, flexDirection: 'row', backgroundColor: '#fbbf2410', borderRadius: 9, padding: 10,
+    borderWidth: 1, borderColor: '#fbbf2425', gap: 8,
   },
   schedNewIcon: { fontSize: 16, marginTop: 1 },
-  schedNewTitle: { fontSize: 12, fontWeight: '700', color: '#fbbf24' },
-  schedNewMeta: { fontSize: 10, color: '#94a3b8', marginTop: 2 },
-  appliedHint: { fontSize: 12, color: '#475569', marginTop: 8, textAlign: 'center' },
+  schedNewTitle: { fontSize: 12, fontWeight: '800', color: '#fbbf24' },
+  schedNewMeta: { fontSize: 10, color: '#7a90b0', marginTop: 2 },
+  appliedHint: { fontSize: 12, color: '#3d5068', marginTop: 8, textAlign: 'center' },
   actionBtn: {
-    backgroundColor: '#3b82f6', borderRadius: 14, padding: 16, marginBottom: 10,
-    shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    backgroundColor: '#2563eb', borderRadius: 16, padding: 18, marginBottom: 10,
+    shadowColor: '#4f8ef7', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
   actionBtnDone: {
-    backgroundColor: '#1e293b', borderWidth: 1, borderColor: '#334155', shadowOpacity: 0, elevation: 0,
+    backgroundColor: '#0d1826', borderWidth: 1, borderColor: '#1a2840', shadowOpacity: 0, elevation: 0,
   },
-  actionBtnProc: { backgroundColor: '#1e40af' },
+  actionBtnProc: { backgroundColor: '#1d4ed8' },
   actionInner: { flexDirection: 'row', alignItems: 'center' },
-  actionText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  actionText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
   actionSub: { color: '#93c5fd', fontSize: 12, marginTop: 2 },
   allGoodCard: {
-    flexDirection: 'row', backgroundColor: '#10b98110', borderRadius: 14, padding: 18,
-    marginBottom: 16, borderWidth: 1, borderColor: '#10b98125', alignItems: 'center', gap: 12,
+    flexDirection: 'row', backgroundColor: '#22d3a010', borderRadius: 16, padding: 18,
+    marginBottom: 16, borderWidth: 1, borderColor: '#22d3a020', alignItems: 'center', gap: 12,
   },
-  allGoodText: { fontSize: 14, color: '#94a3b8', flex: 1, lineHeight: 22 },
-  resetBtn: { alignItems: 'center', padding: 12 },
-  resetText: { color: '#475569', fontSize: 14 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  allGoodText: { fontSize: 14, color: '#7a90b0', flex: 1, lineHeight: 22 },
+  resetBtn: { alignItems: 'center', padding: 14 },
+  resetText: { color: '#3d5068', fontSize: 13, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: '#1e293b', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24, borderTopWidth: 1, borderColor: '#334155',
+    backgroundColor: '#0d1826', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingBottom: Platform.OS === 'ios' ? 44 : 28,
+    borderTopWidth: 1, borderColor: '#1e2d42',
+    shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 30, elevation: 30,
   },
-  modalHandle: { width: 40, height: 4, backgroundColor: '#475569', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalHandle: { width: 36, height: 4, backgroundColor: '#1e2d42', borderRadius: 2, alignSelf: 'center', marginBottom: 22 },
   modalTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   priorBadge: {
-    backgroundColor: '#dc262620', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#dc262640',
+    backgroundColor: '#f8717120', borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#f8717140',
   },
-  priorText: { color: '#fca5a5', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#f1f5f9', marginBottom: 8 },
-  modalBody: { fontSize: 15, color: '#94a3b8', lineHeight: 24, marginBottom: 12 },
-  modalScheduleNote: { fontSize: 13, color: '#f59e0b', marginBottom: 16, fontWeight: '600' },
+  priorText: { color: '#fca5a5', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#dde8fb', marginBottom: 8, letterSpacing: -0.3 },
+  modalBody: { fontSize: 14, color: '#7a90b0', lineHeight: 23, marginBottom: 14 },
+  modalScheduleNote: { fontSize: 13, color: '#fbbf24', marginBottom: 16, fontWeight: '700' },
   chipRow: { flexDirection: 'row', gap: 8 },
-  chip: { backgroundColor: '#334155', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  chipText: { color: '#e2e8f0', fontSize: 12, fontWeight: '600' },
+  chip: { backgroundColor: '#1a2840', borderRadius: 9, paddingHorizontal: 13, paddingVertical: 7, borderWidth: 1, borderColor: '#1e2d42' },
+  chipText: { color: '#7a90b0', fontSize: 12, fontWeight: '700' },
 });

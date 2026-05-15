@@ -10,6 +10,7 @@ import {
   UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getCategoryColor, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
 import { useApp } from '@/context/AppContext';
 
@@ -163,10 +164,17 @@ export default function ScenariosScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Scenarios</Text>
-          <Text style={styles.headerSub}>Auto-detected from performance baselines</Text>
-        </View>
+        <LinearGradient
+          colors={['#112060', '#071428']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={styles.hero}
+        >
+          <Text style={styles.heroEyebrow}>⚡  SCENARIO ENGINE</Text>
+          <Text style={styles.heroTitle}>Scenarios</Text>
+          <Text style={styles.heroSub}>Auto-detected from performance baselines</Text>
+        </LinearGradient>
+
+        <View style={styles.content}>
 
         {/* Team Health */}
         <View style={styles.healthRow}>
@@ -215,7 +223,7 @@ export default function ScenariosScreen() {
           ))}
         </View>
 
-        <View style={{ height: 30 }} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -224,82 +232,87 @@ export default function ScenariosScreen() {
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0f172a' },
-  scroll: { flex: 1, padding: 16 },
-  header: { marginBottom: 20, paddingTop: Platform.OS === 'android' ? 10 : 0 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: '#f1f5f9', letterSpacing: -0.5 },
-  headerSub: { fontSize: 13, color: '#64748b', marginTop: 4 },
+  safe: { flex: 1, backgroundColor: '#050c18' },
+  scroll: { flex: 1 },
+  hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 24, paddingHorizontal: 16 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 28, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
+  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6 },
+  content: { padding: 16 },
   healthRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   healthCard: {
-    flex: 1, backgroundColor: '#1e293b', borderRadius: 14, padding: 16, alignItems: 'center',
-    borderWidth: 1,
+    flex: 1, backgroundColor: '#08142a', borderRadius: 16, padding: 18, alignItems: 'center',
+    borderWidth: 1, borderColor: '#0f2040',
   },
-  healthNum: { fontSize: 28, fontWeight: '800' },
-  healthLabel: { fontSize: 12, color: '#64748b', marginTop: 4, fontWeight: '600' },
+  healthNum: { fontSize: 30, fontWeight: '900', letterSpacing: -1 },
+  healthLabel: { fontSize: 10, color: '#2d4a6e', marginTop: 5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   emptyCard: {
-    flexDirection: 'row', backgroundColor: '#10b98110', borderRadius: 14, padding: 20,
-    marginBottom: 16, borderWidth: 1, borderColor: '#10b98125', alignItems: 'center', gap: 14,
+    flexDirection: 'row', backgroundColor: '#22d3a010', borderRadius: 16, padding: 20,
+    marginBottom: 16, borderWidth: 1, borderColor: '#22d3a020', alignItems: 'center', gap: 14,
   },
   emptyIcon: { fontSize: 24 },
-  emptyText: { fontSize: 14, color: '#94a3b8', flex: 1, lineHeight: 22 },
+  emptyText: { fontSize: 14, color: '#7a90b0', flex: 1, lineHeight: 22 },
   howCard: {
-    backgroundColor: '#1e293b', borderRadius: 14, padding: 18, marginTop: 8,
-    borderWidth: 1, borderColor: '#334155',
+    backgroundColor: '#08142a', borderRadius: 16, padding: 18, marginTop: 8, marginBottom: 30,
+    borderWidth: 1, borderColor: '#0f2040',
   },
-  howTitle: { fontSize: 16, fontWeight: '700', color: '#e2e8f0', marginBottom: 16 },
+  howTitle: { fontSize: 11, fontWeight: '900', color: '#2d4a6e', marginBottom: 16, letterSpacing: 1.5, textTransform: 'uppercase' },
   howStep: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
   howNum: {
-    width: 26, height: 26, borderRadius: 8, backgroundColor: '#3b82f620',
+    width: 28, height: 28, borderRadius: 9, backgroundColor: '#1e3d70',
     justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
-  howNumText: { color: '#3b82f6', fontSize: 13, fontWeight: '800' },
-  howStepTitle: { fontSize: 14, fontWeight: '700', color: '#e2e8f0', marginBottom: 2 },
-  howStepDesc: { fontSize: 13, color: '#64748b', lineHeight: 20 },
+  howNumText: { color: '#60a5fa', fontSize: 13, fontWeight: '900' },
+  howStepTitle: { fontSize: 14, fontWeight: '800', color: '#c8d8f0', marginBottom: 2 },
+  howStepDesc: { fontSize: 13, color: '#2d4a6e', lineHeight: 20 },
 });
 
 const cardStyles = StyleSheet.create({
   container: {
-    backgroundColor: '#1e293b', borderRadius: 14, padding: 16, marginBottom: 12,
+    backgroundColor: '#0d1826', borderRadius: 16, padding: 16, marginBottom: 12,
     borderWidth: 1,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
   },
   header: { flexDirection: 'row', alignItems: 'center' },
   iconBadge: {
-    width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    width: 44, height: 44, borderRadius: 13, justifyContent: 'center', alignItems: 'center', marginRight: 12,
+    borderWidth: 1, borderColor: 'transparent',
   },
   iconText: { fontSize: 20 },
   headerInfo: { flex: 1 },
-  title: { fontSize: 15, fontWeight: '700', color: '#f1f5f9' },
-  tagline: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  title: { fontSize: 15, fontWeight: '800', color: '#dde8fb', letterSpacing: 0.1 },
+  tagline: { fontSize: 12, color: '#3d5068', marginTop: 3 },
   rightCol: { alignItems: 'flex-end', gap: 6 },
-  countBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  countText: { fontSize: 11, fontWeight: '700' },
-  expand: { fontSize: 11, color: '#475569' },
-  body: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#334155', paddingTop: 14 },
+  countBadge: { borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 },
+  countText: { fontSize: 11, fontWeight: '800' },
+  expand: { fontSize: 11, color: '#3d5068' },
+  body: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#1a2840', paddingTop: 14 },
   section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#94a3b8', marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#3d5068', marginBottom: 10, letterSpacing: 1, textTransform: 'uppercase' },
   anomalyChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  anomalyChip: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
-  anomalyChipText: { fontSize: 11, fontWeight: '700' },
+  anomalyChip: { borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5 },
+  anomalyChipText: { fontSize: 11, fontWeight: '800' },
   playerRow: {
-    flexDirection: 'row', backgroundColor: '#0f172a', borderRadius: 12, padding: 14,
+    flexDirection: 'row', backgroundColor: '#080d16', borderRadius: 13, padding: 14,
     marginBottom: 10, alignItems: 'flex-start',
+    borderWidth: 1, borderColor: '#1a2840',
   },
   playerAvatar: {
-    width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center',
-    marginRight: 12, marginTop: 2,
+    width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
+    marginRight: 12, marginTop: 2, borderWidth: 1.5, borderColor: 'transparent',
   },
-  playerInit: { fontSize: 13, fontWeight: '800' },
+  playerInit: { fontSize: 13, fontWeight: '900' },
   playerInfo: { flex: 1 },
   playerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  playerName: { fontSize: 14, fontWeight: '700', color: '#e2e8f0' },
-  playerReason: { fontSize: 12, color: '#94a3b8', lineHeight: 18, marginBottom: 8 },
+  playerName: { fontSize: 14, fontWeight: '800', color: '#dde8fb' },
+  playerReason: { fontSize: 12, color: '#7a90b0', lineHeight: 18, marginBottom: 8 },
   indRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
-  indChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  indText: { fontSize: 10, fontWeight: '700' },
-  intBlock: { backgroundColor: '#1e293b', borderRadius: 8, padding: 10 },
-  intLabel: { fontSize: 10, fontWeight: '700', color: '#64748b', marginBottom: 2 },
-  intValue: { fontSize: 13, fontWeight: '600', color: '#e2e8f0' },
-  intDuration: { fontSize: 11, color: '#475569', marginTop: 2 },
+  indChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  indText: { fontSize: 10, fontWeight: '800' },
+  intBlock: { backgroundColor: '#0d1826', borderRadius: 9, padding: 10, borderWidth: 1, borderColor: '#1a2840' },
+  intLabel: { fontSize: 9, fontWeight: '800', color: '#3d5068', marginBottom: 3, letterSpacing: 0.8, textTransform: 'uppercase' },
+  intValue: { fontSize: 13, fontWeight: '700', color: '#dde8fb' },
+  intDuration: { fontSize: 11, color: '#3d5068', marginTop: 2 },
   confBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  confText: { fontSize: 11, fontWeight: '800' },
+  confText: { fontSize: 11, fontWeight: '900' },
 });
