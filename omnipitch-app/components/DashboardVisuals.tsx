@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TeamData, Player, analyzePlayer, getBaseline, getCategoryColor } from '@/data/team';
+import { useApp } from '@/context/AppContext';
 
 // ─── Team Performance Summary ───────────────────────────────────────────────
 
 export function TeamPerformanceSummary({ team }: { team: TeamData }) {
+  const { colors } = useApp();
+  const teamStyles = useMemo(() => createTeamStyles(colors), [colors]);
+
   let totalGoals = 0;
   let totalXG = 0;
   let statusCounts = { Active: 0, Recovery: 0, 'Technical Focus': 0, 'Tactical Review': 0 };
@@ -46,14 +50,13 @@ export function TeamPerformanceSummary({ team }: { team: TeamData }) {
     <View style={teamStyles.container}>
       <Text style={teamStyles.title}>Squad Performance Analytics</Text>
 
-      {/* xG vs Goals */}
       <View style={teamStyles.chartRow}>
         <View style={teamStyles.chartLabelCol}>
           <Text style={teamStyles.chartLabel}>Goals</Text>
           <Text style={teamStyles.chartValue}>{totalGoals}</Text>
         </View>
         <View style={teamStyles.barContainer}>
-          <View style={[teamStyles.barFill, { backgroundColor: '#3b82f6', width: `${(totalGoals / maxGoalsXg) * 100}%` }]} />
+          <View style={[teamStyles.barFill, { backgroundColor: colors.primary, width: `${(totalGoals / maxGoalsXg) * 100}%` }]} />
         </View>
       </View>
       <View style={teamStyles.chartRow}>
@@ -62,21 +65,21 @@ export function TeamPerformanceSummary({ team }: { team: TeamData }) {
           <Text style={teamStyles.chartValue}>{totalXG.toFixed(1)}</Text>
         </View>
         <View style={teamStyles.barContainer}>
-          <View style={[teamStyles.barFill, { backgroundColor: '#f59e0b', width: `${(totalXG / maxGoalsXg) * 100}%` }]} />
+          <View style={[teamStyles.barFill, { backgroundColor: colors.warning, width: `${(totalXG / maxGoalsXg) * 100}%` }]} />
         </View>
       </View>
 
       {/* Squad Readiness Bar */}
       <Text style={teamStyles.sectionTitle}>Squad Readiness</Text>
       <View style={teamStyles.stackedBarContainer}>
-        <View style={[teamStyles.stackedSegment, { backgroundColor: '#10b981', width: `${activePct}%` }]} />
-        <View style={[teamStyles.stackedSegment, { backgroundColor: '#8b5cf6', width: `${recoveryPct}%` }]} />
-        <View style={[teamStyles.stackedSegment, { backgroundColor: '#f59e0b', width: `${focusPct}%` }]} />
+        <View style={[teamStyles.stackedSegment, { backgroundColor: colors.success, width: `${activePct}%` }]} />
+        <View style={[teamStyles.stackedSegment, { backgroundColor: colors.info, width: `${recoveryPct}%` }]} />
+        <View style={[teamStyles.stackedSegment, { backgroundColor: colors.warning, width: `${focusPct}%` }]} />
       </View>
       <View style={teamStyles.legendRow}>
-        <View style={teamStyles.legendItem}><View style={[teamStyles.legendDot, { backgroundColor: '#10b981' }]} /><Text style={teamStyles.legendText}>Active ({statusCounts.Active})</Text></View>
-        <View style={teamStyles.legendItem}><View style={[teamStyles.legendDot, { backgroundColor: '#8b5cf6' }]} /><Text style={teamStyles.legendText}>Recovery ({statusCounts.Recovery})</Text></View>
-        <View style={teamStyles.legendItem}><View style={[teamStyles.legendDot, { backgroundColor: '#f59e0b' }]} /><Text style={teamStyles.legendText}>Focus ({statusCounts['Technical Focus'] + statusCounts['Tactical Review']})</Text></View>
+        <View style={teamStyles.legendItem}><View style={[teamStyles.legendDot, { backgroundColor: colors.success }]} /><Text style={teamStyles.legendText}>Active ({statusCounts.Active})</Text></View>
+        <View style={teamStyles.legendItem}><View style={[teamStyles.legendDot, { backgroundColor: colors.info }]} /><Text style={teamStyles.legendText}>Recovery ({statusCounts.Recovery})</Text></View>
+        <View style={teamStyles.legendItem}><View style={[teamStyles.legendDot, { backgroundColor: colors.warning }]} /><Text style={teamStyles.legendText}>Focus ({statusCounts['Technical Focus'] + statusCounts['Tactical Review']})</Text></View>
       </View>
 
       {/* Alert Matrix */}
@@ -93,10 +96,10 @@ export function TeamPerformanceSummary({ team }: { team: TeamData }) {
             <Text style={teamStyles.matrixRowLabel}>{group}</Text>
             {['Technical', 'Physical', 'Tactical'].map(cat => {
               const val = alertGrid[group as keyof typeof alertGrid][cat as 'Technical' | 'Physical' | 'Tactical'];
-              const bgCol = val > 0 ? getCategoryColor(cat as any) : '#1e293b';
+              const bgCol = val > 0 ? getCategoryColor(cat as any) : colors.bgBase;
               return (
                 <View key={cat} style={[teamStyles.matrixCell, { backgroundColor: bgCol }]}>
-                  <Text style={[teamStyles.matrixCellText, { color: val > 0 ? '#fff' : '#64748b' }]}>{val}</Text>
+                  <Text style={[teamStyles.matrixCellText, { color: val > 0 ? '#fff' : colors.textMuted }]}>{val}</Text>
                 </View>
               );
             })}
@@ -110,6 +113,9 @@ export function TeamPerformanceSummary({ team }: { team: TeamData }) {
 // ─── Player Stat Bars ───────────────────────────────────────────────────────
 
 export function PlayerStatBars({ player }: { player: Player }) {
+  const { colors } = useApp();
+  const barStyles = useMemo(() => createBarStyles(colors), [colors]);
+
   const baseline = getBaseline(player.position);
   const s = player.stats;
 
@@ -139,10 +145,10 @@ export function PlayerStatBars({ player }: { player: Player }) {
           <View key={i} style={barStyles.statRow}>
             <View style={barStyles.labelRow}>
               <Text style={barStyles.label}>{stat.label}</Text>
-              <Text style={[barStyles.value, isBelow && { color: '#ef4444' }]}>{stat.value.toFixed(0)}{stat.suffix} <Text style={barStyles.baseValue}>(Base: {stat.base.toFixed(0)}{stat.suffix})</Text></Text>
+              <Text style={[barStyles.value, isBelow && { color: colors.danger }]}>{stat.value.toFixed(0)}{stat.suffix} <Text style={barStyles.baseValue}>(Base: {stat.base.toFixed(0)}{stat.suffix})</Text></Text>
             </View>
             <View style={barStyles.track}>
-              <View style={[barStyles.fill, { width: `${(Math.min(stat.value, stat.max) / stat.max) * 100}%`, backgroundColor: isBelow ? '#ef4444' : '#10b981' }]} />
+              <View style={[barStyles.fill, { width: `${(Math.min(stat.value, stat.max) / stat.max) * 100}%`, backgroundColor: isBelow ? colors.danger : colors.success }]} />
               <View style={[barStyles.baselineMarker, { left: `${(stat.base / stat.max) * 100}%` }]} />
             </View>
           </View>
@@ -155,6 +161,10 @@ export function PlayerStatBars({ player }: { player: Player }) {
 // ─── Physical Output Tracker ────────────────────────────────────────────────
 
 export function PhysicalOutputTracker({ player }: { player: Player }) {
+  const { colors } = useApp();
+  const barStyles = useMemo(() => createBarStyles(colors), [colors]);
+  const heatmapStyles = useMemo(() => createHeatmapStyles(colors), [colors]);
+
   const coverageScores = { Wide: 100, Normal: 60, Contracted: 30 };
   const sprintScores = { High: 100, Normal: 60, Low: 30 };
   
@@ -168,20 +178,20 @@ export function PhysicalOutputTracker({ player }: { player: Player }) {
       <View style={barStyles.statRow}>
         <View style={barStyles.labelRow}>
           <Text style={barStyles.label}>Area Coverage</Text>
-          <Text style={[barStyles.value, covScore < 50 && { color: '#f59e0b' }]}>{player.stats.heatmapCoverage}</Text>
+          <Text style={[barStyles.value, covScore < 50 && { color: colors.warning }]}>{player.stats.heatmapCoverage}</Text>
         </View>
         <View style={barStyles.track}>
-          <View style={[barStyles.fill, { width: `${covScore}%`, backgroundColor: covScore > 50 ? '#10b981' : '#f59e0b' }]} />
+          <View style={[barStyles.fill, { width: `${covScore}%`, backgroundColor: covScore > 50 ? colors.success : colors.warning }]} />
         </View>
       </View>
 
       <View style={barStyles.statRow}>
         <View style={barStyles.labelRow}>
           <Text style={barStyles.label}>Sprint Load</Text>
-          <Text style={[barStyles.value, sprScore < 50 && { color: '#ef4444' }]}>{player.stats.sprintDistance}</Text>
+          <Text style={[barStyles.value, sprScore < 50 && { color: colors.danger }]}>{player.stats.sprintDistance}</Text>
         </View>
         <View style={barStyles.track}>
-          <View style={[barStyles.fill, { width: `${sprScore}%`, backgroundColor: sprScore > 50 ? '#10b981' : '#ef4444' }]} />
+          <View style={[barStyles.fill, { width: `${sprScore}%`, backgroundColor: sprScore > 50 ? colors.success : colors.danger }]} />
         </View>
       </View>
     </View>
@@ -190,45 +200,45 @@ export function PhysicalOutputTracker({ player }: { player: Player }) {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const teamStyles = StyleSheet.create({
-  container: { backgroundColor: '#0a1628', borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#1a2840' },
-  title: { fontSize: 16, fontWeight: '800', color: '#dde8fb', marginBottom: 16 },
+const createTeamStyles = (colors: any) => StyleSheet.create({
+  container: { backgroundColor: colors.bgCardAlt, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.borderSubtle },
+  title: { fontSize: 16, fontWeight: '800', color: colors.textTitle, marginBottom: 16 },
   chartRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   chartLabelCol: { width: 100 },
-  chartLabel: { fontSize: 11, color: '#7a90b0', fontWeight: '600' },
-  chartValue: { fontSize: 14, color: '#dde8fb', fontWeight: '800' },
-  barContainer: { flex: 1, height: 12, backgroundColor: '#1e293b', borderRadius: 6, overflow: 'hidden' },
+  chartLabel: { fontSize: 11, color: colors.textSub, fontWeight: '600' },
+  chartValue: { fontSize: 14, color: colors.textTitle, fontWeight: '800' },
+  barContainer: { flex: 1, height: 12, backgroundColor: colors.borderBase, borderRadius: 6, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 6 },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: '#7a90b0', marginTop: 16, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: colors.textSub, marginTop: 16, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   stackedBarContainer: { flexDirection: 'row', height: 14, borderRadius: 7, overflow: 'hidden', marginBottom: 10 },
   stackedSegment: { height: '100%' },
   legendRow: { flexDirection: 'row', justifyContent: 'space-between' },
   legendItem: { flexDirection: 'row', alignItems: 'center' },
   legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  legendText: { fontSize: 11, color: '#94a3b8', fontWeight: '600' },
-  matrix: { marginTop: 4, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#1e293b' },
-  matrixHeaderRow: { flexDirection: 'row', backgroundColor: '#0f172a', paddingVertical: 8 },
-  matrixHeaderCell: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' },
-  matrixRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#1e293b', backgroundColor: '#0a1628' },
-  matrixRowLabel: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '800', color: '#dde8fb', paddingVertical: 10, alignSelf: 'center' },
-  matrixCell: { flex: 1, justifyContent: 'center', alignItems: 'center', borderLeftWidth: 1, borderLeftColor: '#1e293b' },
+  legendText: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
+  matrix: { marginTop: 4, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: colors.borderStrong },
+  matrixHeaderRow: { flexDirection: 'row', backgroundColor: colors.borderBase, paddingVertical: 8 },
+  matrixHeaderCell: { flex: 1, textAlign: 'center', fontSize: 10, fontWeight: '800', color: colors.textMuted, textTransform: 'uppercase' },
+  matrixRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.borderStrong, backgroundColor: colors.bgCard },
+  matrixRowLabel: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '800', color: colors.textTitle, paddingVertical: 10, alignSelf: 'center' },
+  matrixCell: { flex: 1, justifyContent: 'center', alignItems: 'center', borderLeftWidth: 1, borderLeftColor: colors.borderStrong },
   matrixCellText: { fontSize: 14, fontWeight: '900' },
 });
 
-const barStyles = StyleSheet.create({
+const createBarStyles = (colors: any) => StyleSheet.create({
   container: { marginTop: 16 },
-  title: { fontSize: 12, fontWeight: '800', color: '#7a90b0', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  title: { fontSize: 12, fontWeight: '800', color: colors.textSub, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
   statRow: { marginBottom: 12 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  label: { fontSize: 12, color: '#dde8fb', fontWeight: '600' },
-  value: { fontSize: 12, color: '#10b981', fontWeight: '800' },
-  baseValue: { fontSize: 10, color: '#64748b', fontWeight: '500' },
-  track: { height: 8, backgroundColor: '#1e293b', borderRadius: 4, position: 'relative' },
+  label: { fontSize: 12, color: colors.textTitle, fontWeight: '600' },
+  value: { fontSize: 12, color: colors.success, fontWeight: '800' },
+  baseValue: { fontSize: 10, color: colors.textMuted, fontWeight: '500' },
+  track: { height: 8, backgroundColor: colors.borderBase, borderRadius: 4, position: 'relative' },
   fill: { height: '100%', borderRadius: 4 },
-  baselineMarker: { position: 'absolute', top: -2, bottom: -2, width: 2, backgroundColor: '#fff', borderRadius: 1 },
+  baselineMarker: { position: 'absolute', top: -2, bottom: -2, width: 2, backgroundColor: colors.textInverse, borderRadius: 1, zIndex: 1 },
 });
 
-const heatmapStyles = StyleSheet.create({
+const createHeatmapStyles = (colors: any) => StyleSheet.create({
   container: { marginTop: 16 },
-  title: { fontSize: 12, fontWeight: '800', color: '#7a90b0', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
+  title: { fontSize: 12, fontWeight: '800', color: colors.textSub, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 },
 });

@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   LayoutAnimation,
   UIManager,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getCategoryColor, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
 import { useApp } from '@/context/AppContext';
+import { Image } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -49,6 +51,8 @@ function discoverScenarios(team: TeamData): DiscoveredScenario[] {
 // ─── Scenario Card ──────────────────────────────────────────────────────────
 
 function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
+  const { colors } = useApp();
+  const cardStyles = useMemo(() => createCardStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(false);
   const color = getCategoryColor(scenario.category);
 
@@ -64,7 +68,7 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
 
   return (
     <TouchableOpacity
-      style={[cardStyles.container, { borderColor: expanded ? color + '60' : '#334155' }]}
+      style={[cardStyles.container, { borderColor: expanded ? color + '60' : colors.borderStrong }]}
       onPress={toggle}
       activeOpacity={0.8}
     >
@@ -108,7 +112,11 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
             {scenario.players.map(({ player, analysis }) => (
               <View key={player.id} style={cardStyles.playerRow}>
                 <View style={[cardStyles.playerAvatar, { backgroundColor: player.avatarColor + '25' }]}>
-                  <Text style={[cardStyles.playerInit, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
+                  {player.imageUrl ? (
+                    <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <Text style={[cardStyles.playerInit, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
+                  )}
                 </View>
                 <View style={cardStyles.playerInfo}>
                   <View style={cardStyles.playerHeader}>
@@ -156,8 +164,29 @@ function sevColor(sev: string): string {
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 export default function ScenariosScreen() {
-  const { selectedTeam } = useApp();
-  const scenarios = useMemo(() => discoverScenarios(selectedTeam), [selectedTeam]);
+  const { selectedTeam, generateAiScenarios, colors } = useApp();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiScenarios, setAiScenarios] = useState<DiscoveredScenario[] | null>(null);
+
+  // Reset AI scenarios when team changes
+  React.useEffect(() => {
+    setAiScenarios(null);
+  }, [selectedTeam.id]);
+
+  const localScenarios = useMemo(() => discoverScenarios(selectedTeam), [selectedTeam]);
+  const scenarios = aiScenarios || localScenarios;
+
+  const handleAiDiscovery = async () => {
+    if (!selectedTeam?.players?.length) return;
+    setIsGenerating(true);
+    const result = await generateAiScenarios(selectedTeam.players);
+    if (result) {
+      setAiScenarios(result);
+    }
+    setIsGenerating(false);
+  };
+
   const totalFlagged = scenarios.reduce((sum, s) => sum + s.players.length, 0);
   const totalClear = selectedTeam.players.length - totalFlagged;
 
@@ -165,7 +194,7 @@ export default function ScenariosScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={['#112060', '#071428']}
+          colors={[colors.heroGrad1, colors.heroGrad2]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
@@ -178,19 +207,35 @@ export default function ScenariosScreen() {
 
         {/* Team Health */}
         <View style={styles.healthRow}>
-          <View style={[styles.healthCard, { borderColor: '#10b98130' }]}>
-            <Text style={[styles.healthNum, { color: '#10b981' }]}>{totalClear}</Text>
+          <View style={[styles.healthCard, { borderColor: colors.success + '40' }]}>
+            <Text style={[styles.healthNum, { color: colors.success }]}>{totalClear}</Text>
             <Text style={styles.healthLabel}>Clear</Text>
           </View>
-          <View style={[styles.healthCard, { borderColor: '#ef444430' }]}>
-            <Text style={[styles.healthNum, { color: '#ef4444' }]}>{totalFlagged}</Text>
+          <View style={[styles.healthCard, { borderColor: colors.danger + '40' }]}>
+            <Text style={[styles.healthNum, { color: colors.danger }]}>{totalFlagged}</Text>
             <Text style={styles.healthLabel}>Flagged</Text>
           </View>
-          <View style={[styles.healthCard, { borderColor: '#3b82f630' }]}>
-            <Text style={[styles.healthNum, { color: '#3b82f6' }]}>{scenarios.length}</Text>
+          <View style={[styles.healthCard, { borderColor: colors.primary + '40' }]}>
+            <Text style={[styles.healthNum, { color: colors.primary }]}>{scenarios.length}</Text>
             <Text style={styles.healthLabel}>Categories</Text>
           </View>
         </View>
+
+        {/* AI Action Button */}
+        <TouchableOpacity
+          style={[styles.aiBtn, isGenerating && { opacity: 0.7 }]}
+          onPress={handleAiDiscovery}
+          disabled={isGenerating}
+        >
+          {isGenerating ? (
+            <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+          ) : (
+            <Text style={{ fontSize: 18, marginRight: 8 }}>🧠</Text>
+          )}
+          <Text style={styles.aiBtnText}>
+            {isGenerating ? 'AI Generating Scenarios...' : 'Auto-Discover with AI'}
+          </Text>
+        </TouchableOpacity>
 
         {/* Dynamic Scenario Cards */}
         {scenarios.length === 0 ? (
@@ -231,47 +276,53 @@ export default function ScenariosScreen() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#050c18' },
+const createStyles = (colors: any) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
   hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 24, paddingHorizontal: 16 },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
-  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 28, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
+  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6 },
   content: { padding: 16 },
   healthRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   healthCard: {
-    flex: 1, backgroundColor: '#08142a', borderRadius: 16, padding: 18, alignItems: 'center',
-    borderWidth: 1, borderColor: '#0f2040',
+    flex: 1, backgroundColor: colors.bgCard, borderRadius: 16, padding: 18, alignItems: 'center',
+    borderWidth: 1, borderColor: colors.borderBase,
   },
   healthNum: { fontSize: 30, fontWeight: '900', letterSpacing: -1 },
-  healthLabel: { fontSize: 10, color: '#2d4a6e', marginTop: 5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  healthLabel: { fontSize: 10, color: colors.textSub, marginTop: 5, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   emptyCard: {
-    flexDirection: 'row', backgroundColor: '#22d3a010', borderRadius: 16, padding: 20,
-    marginBottom: 16, borderWidth: 1, borderColor: '#22d3a020', alignItems: 'center', gap: 14,
+    flexDirection: 'row', backgroundColor: colors.bgCardAlt, borderRadius: 16, padding: 20,
+    marginBottom: 16, borderWidth: 1, borderColor: colors.success, alignItems: 'center', gap: 14,
   },
   emptyIcon: { fontSize: 24 },
-  emptyText: { fontSize: 14, color: '#7a90b0', flex: 1, lineHeight: 22 },
+  emptyText: { fontSize: 14, color: colors.textSub, flex: 1, lineHeight: 22 },
   howCard: {
-    backgroundColor: '#08142a', borderRadius: 16, padding: 18, marginTop: 8, marginBottom: 30,
-    borderWidth: 1, borderColor: '#0f2040',
+    backgroundColor: colors.bgCard, borderRadius: 16, padding: 18, marginTop: 8, marginBottom: 30,
+    borderWidth: 1, borderColor: colors.borderBase,
   },
-  howTitle: { fontSize: 11, fontWeight: '900', color: '#2d4a6e', marginBottom: 16, letterSpacing: 1.5, textTransform: 'uppercase' },
+  howTitle: { fontSize: 11, fontWeight: '900', color: colors.textMuted, marginBottom: 16, letterSpacing: 1.5, textTransform: 'uppercase' },
   howStep: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
   howNum: {
-    width: 28, height: 28, borderRadius: 9, backgroundColor: '#1e3d70',
+    width: 28, height: 28, borderRadius: 9, backgroundColor: colors.borderStrong,
     justifyContent: 'center', alignItems: 'center', marginRight: 12,
   },
-  howNumText: { color: '#60a5fa', fontSize: 13, fontWeight: '900' },
-  howStepTitle: { fontSize: 14, fontWeight: '800', color: '#c8d8f0', marginBottom: 2 },
-  howStepDesc: { fontSize: 13, color: '#2d4a6e', lineHeight: 20 },
+  howNumText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  howStepTitle: { fontSize: 14, fontWeight: '800', color: colors.textTitle, marginBottom: 2 },
+  howStepDesc: { fontSize: 13, color: colors.textMuted, lineHeight: 20 },
+  aiBtn: {
+    backgroundColor: colors.info, borderRadius: 16, padding: 16, marginBottom: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    shadowColor: colors.info, shadowOpacity: 0.4, shadowRadius: 12, elevation: 4,
+  },
+  aiBtnText: { color: colors.textInverse, fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
 });
 
-const cardStyles = StyleSheet.create({
+const createCardStyles = (colors: any) => StyleSheet.create({
   container: {
-    backgroundColor: '#0d1826', borderRadius: 16, padding: 16, marginBottom: 12,
+    backgroundColor: colors.bgDropdown, borderRadius: 16, padding: 16, marginBottom: 12,
     borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
   },
   header: { flexDirection: 'row', alignItems: 'center' },
   iconBadge: {
@@ -280,39 +331,40 @@ const cardStyles = StyleSheet.create({
   },
   iconText: { fontSize: 20 },
   headerInfo: { flex: 1 },
-  title: { fontSize: 15, fontWeight: '800', color: '#dde8fb', letterSpacing: 0.1 },
-  tagline: { fontSize: 12, color: '#3d5068', marginTop: 3 },
+  title: { fontSize: 15, fontWeight: '800', color: colors.textTitle, letterSpacing: 0.1 },
+  tagline: { fontSize: 12, color: colors.textSub, marginTop: 3 },
   rightCol: { alignItems: 'flex-end', gap: 6 },
   countBadge: { borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 },
   countText: { fontSize: 11, fontWeight: '800' },
-  expand: { fontSize: 11, color: '#3d5068' },
-  body: { marginTop: 16, borderTopWidth: 1, borderTopColor: '#1a2840', paddingTop: 14 },
+  expand: { fontSize: 11, color: colors.textSub },
+  body: { marginTop: 16, borderTopWidth: 1, borderTopColor: colors.borderSubtle, paddingTop: 14 },
   section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: '#3d5068', marginBottom: 10, letterSpacing: 1, textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textMuted, marginBottom: 10, letterSpacing: 1, textTransform: 'uppercase' },
   anomalyChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   anomalyChip: { borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5 },
   anomalyChipText: { fontSize: 11, fontWeight: '800' },
   playerRow: {
-    flexDirection: 'row', backgroundColor: '#080d16', borderRadius: 13, padding: 14,
+    flexDirection: 'row', backgroundColor: colors.bgCard, borderRadius: 13, padding: 14,
     marginBottom: 10, alignItems: 'flex-start',
-    borderWidth: 1, borderColor: '#1a2840',
+    borderWidth: 1, borderColor: colors.borderBase,
   },
   playerAvatar: {
     width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
     marginRight: 12, marginTop: 2, borderWidth: 1.5, borderColor: 'transparent',
+    overflow: 'hidden',
   },
   playerInit: { fontSize: 13, fontWeight: '900' },
   playerInfo: { flex: 1 },
   playerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  playerName: { fontSize: 14, fontWeight: '800', color: '#dde8fb' },
-  playerReason: { fontSize: 12, color: '#7a90b0', lineHeight: 18, marginBottom: 8 },
+  playerName: { fontSize: 14, fontWeight: '800', color: colors.textTitle },
+  playerReason: { fontSize: 12, color: colors.textMuted, lineHeight: 18, marginBottom: 8 },
   indRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
   indChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   indText: { fontSize: 10, fontWeight: '800' },
-  intBlock: { backgroundColor: '#0d1826', borderRadius: 9, padding: 10, borderWidth: 1, borderColor: '#1a2840' },
-  intLabel: { fontSize: 9, fontWeight: '800', color: '#3d5068', marginBottom: 3, letterSpacing: 0.8, textTransform: 'uppercase' },
-  intValue: { fontSize: 13, fontWeight: '700', color: '#dde8fb' },
-  intDuration: { fontSize: 11, color: '#3d5068', marginTop: 2 },
+  intBlock: { backgroundColor: colors.bgCardAlt, borderRadius: 9, padding: 10, borderWidth: 1, borderColor: colors.borderBase },
+  intLabel: { fontSize: 9, fontWeight: '800', color: colors.textSub, marginBottom: 3, letterSpacing: 0.8, textTransform: 'uppercase' },
+  intValue: { fontSize: 13, fontWeight: '700', color: colors.textTitle },
+  intDuration: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   confBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   confText: { fontSize: 11, fontWeight: '900' },
 });

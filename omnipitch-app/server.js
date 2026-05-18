@@ -1,9 +1,13 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { chromium } = require('playwright');
+const Groq = require('groq-sdk');
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const app = express();
 app.use(cors());
+app.use(express.json({ limit: '50mb' }));
 
 // Map Country codes to emoji flags
 function getEmojiFlag(ccode) {
@@ -125,7 +129,6 @@ async function scrapeTeam(teamId, teamName) {
 app.get('/api/scrape/:teamId', async (req, res) => {
   try {
     const { teamId } = req.params;
-    // Map team IDs to names (hardcoded for demo purposes as in the original script)
     const teamsMap = {
       '8456': 'Manchester City',
       '9825': 'Arsenal',
@@ -138,6 +141,119 @@ app.get('/api/scrape/:teamId', async (req, res) => {
     res.json(teamData);
   } catch (error) {
     console.error("Scraping error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/agent/intervention', async (req, res) => {
+  try {
+    const { player } = req.body;
+    const prompt = `You are an Elite Football Data Analyst AI agent working for a top-tier Champions League club.
+Your task is to analyze this specific player's stats and detect vulnerabilities against positional baselines, then make a highly creative, cutting-edge intervention.
+DO NOT use generic training sessions (like "Finishing Drills"). You must suggest hyper-modern interventions (e.g., "VR Cognitive Scanning", "Neuro-plasticity Reaction Training", "Bio-band Sleep Cycle Reset").
+
+Generate this exact JSON structure (NOT an array, just the object):
+{
+  "playerId": "string",
+  "hasIssue": true,
+  "category": "Technical" | "Physical" | "Tactical",
+  "title": "string (e.g., 'Physical: Fatigue & Output Decline')",
+  "severity": "low" | "medium" | "high" | "critical",
+  "confidence": number (0-100),
+  "reasoning": "string (Explain exactly which stats caused this vulnerability and why)",
+  "anomalies": [
+    { "metric": "string", "actual": "string", "baseline": "string", "deviation": "below" | "above", "severity": number (0-1) }
+  ],
+  "indicators": [
+    { "label": "string", "value": "string", "color": "string (hex color, e.g., #ef4444 for bad, #f59e0b for warning)" }
+  ],
+  "intervention": {
+    "primary": "string (Title of the specific training session to fix this vulnerability)",
+    "secondary": "string (Description of the session)",
+    "duration": "string (e.g., '48h Recovery Protocol')",
+    "statusChange": "Technical Focus" | "Recovery" | "Tactical Review"
+  }
+}
+
+Player Data:
+${JSON.stringify({
+  id: player.id,
+  name: player.name,
+  position: player.position,
+  stats: player.stats
+}, null, 2)}`;
+
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" }
+    });
+
+    const analysis = JSON.parse(response.choices[0].message.content);
+    res.json(analysis);
+  } catch (error) {
+    console.error("Agent API error (Intervention):", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/agent/scenarios', async (req, res) => {
+  try {
+    const { players } = req.body;
+    const prompt = `You are an Elite Football Data Analyst AI agent.
+Analyze this team's players and identify 2-3 macro-scenarios (Technical, Physical, or Tactical issues) affecting multiple players.
+
+Generate this exact JSON structure:
+{
+  "scenarios": [
+    {
+      "category": "Technical" | "Physical" | "Tactical",
+      "icon": "string (emoji)",
+      "players": [
+        {
+          "player": { "id": "string", "name": "string", "avatarInitials": "string", "avatarColor": "string", "position": "string" },
+          "analysis": {
+            "hasIssue": true,
+            "category": "Technical" | "Physical" | "Tactical",
+            "title": "string",
+            "severity": "low" | "medium" | "high" | "critical",
+            "confidence": number,
+            "reasoning": "string",
+            "anomalies": [{ "metric": "string", "actual": "string", "baseline": "string", "deviation": "below" | "above", "severity": number }],
+            "indicators": [{ "label": "string", "value": "string", "color": "string" }],
+            "intervention": {
+              "primary": "string",
+              "secondary": "string",
+              "duration": "string",
+              "statusChange": "Technical Focus" | "Recovery" | "Tactical Review"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
+Team Players Data:
+${JSON.stringify(players.map(p => ({
+  id: p.id,
+  name: p.name,
+  avatarInitials: p.avatarInitials,
+  avatarColor: p.avatarColor,
+  position: p.position,
+  stats: p.stats
+})), null, 2)}`;
+
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" }
+    });
+
+    const result = JSON.parse(response.choices[0].message.content);
+    res.json(result.scenarios);
+  } catch (error) {
+    console.error("Agent API error (Scenarios):", error);
     res.status(500).json({ error: error.message });
   }
 });

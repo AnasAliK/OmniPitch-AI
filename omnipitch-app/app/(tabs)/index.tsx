@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -86,6 +86,7 @@ const rowStyles = StyleSheet.create({
   avatar: {
     width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
   avatarText: { fontSize: 16, fontWeight: '900', color: '#fff' },
   infoContainer: { flex: 1, justifyContent: 'center' },
@@ -125,7 +126,9 @@ const statStyles = StyleSheet.create({
 // ─── Main Dashboard ─────────────────────────────────────────────────────────
 
 export default function OmniPitchDashboard() {
-  const { selectedTeam, selectedTeamId, switchTeam, applyIntervention, resetIntervention, hasIntervention, overrides, isLoadingTeam } = useApp();
+  const { selectedTeam, selectedTeamId, switchTeam, applyIntervention, resetIntervention, hasIntervention, overrides, isLoadingTeam, generateAiIntervention, theme, toggleTheme, colors } = useApp();
+  
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
@@ -166,28 +169,42 @@ export default function OmniPitchDashboard() {
     }
   }, [isProcessing, pulseAnim]);
 
-  const triggerIntervention = useCallback(() => {
+  const triggerIntervention = useCallback(async () => {
     if (!selectedPlayer) return;
     const currentAnalysis = analyzePlayer(selectedPlayer);
     if (!currentAnalysis.hasIssue) return;
+    
     setIsProcessing(true);
-    setNotifPayload(currentAnalysis);
-    setTimeout(() => {
-      setIsProcessing(false);
+    
+    // Fetch hyper-modern AI intervention on-demand via Groq
+    const aiAnalysis = await generateAiIntervention(selectedPlayer);
+    
+    setIsProcessing(false);
+    
+    if (aiAnalysis) {
+      setNotifPayload(aiAnalysis);
+      setShowNotification(true);
+      setTimeout(() => {
+        setShowNotification(false);
+        applyIntervention(selectedPlayer);
+      }, 3500);
+    } else {
+      // Fallback if AI fails
+      setNotifPayload(currentAnalysis);
       setShowNotification(true);
       setTimeout(() => {
         setShowNotification(false);
         applyIntervention(selectedPlayer);
       }, 2500);
-    }, 1500);
-  }, [selectedPlayer, applyIntervention]);
+    }
+  }, [selectedPlayer, applyIntervention, generateAiIntervention]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* ── Hero Header ── */}
         <LinearGradient
-          colors={['#112060', '#071428']}
+          colors={[colors.heroGrad1, colors.heroGrad2]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
@@ -199,15 +216,19 @@ export default function OmniPitchDashboard() {
             </View>
             <View style={styles.heroCounters}>
               <View style={styles.heroCounter}>
-                <Text style={[styles.heroCountNum, { color: '#f87171' }]}>{alertCount}</Text>
+                <Text style={[styles.heroCountNum, { color: colors.danger }]}>{alertCount}</Text>
                 <Text style={styles.heroCountLabel}>Alerts</Text>
               </View>
               {modifiedCount > 0 && (
-                <View style={[styles.heroCounter, { borderColor: '#f59e0b40' }]}>
-                  <Text style={[styles.heroCountNum, { color: '#f59e0b' }]}>{modifiedCount}</Text>
+                <View style={[styles.heroCounter, { borderColor: colors.warning }]}>
+                  <Text style={[styles.heroCountNum, { color: colors.warning }]}>{modifiedCount}</Text>
                   <Text style={styles.heroCountLabel}>Modified</Text>
                 </View>
               )}
+              {/* Theme Toggle Button */}
+              <TouchableOpacity onPress={toggleTheme} style={styles.heroCounter}>
+                <Text style={{ fontSize: 18 }}>{theme === 'dark' ? '☀️' : '🌙'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.teamPills}>
@@ -228,12 +249,12 @@ export default function OmniPitchDashboard() {
         <View style={{ paddingHorizontal: 16 }}>
           {isLoadingTeam ? (
             <View style={{ paddingVertical: 60, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#3b82f6" />
-              <Text style={{ color: '#94a3b8', marginTop: 16, fontSize: 16, fontWeight: '600' }}>Fetching Live Squad Data...</Text>
-              <Text style={{ color: '#475569', marginTop: 8, fontSize: 13, textAlign: 'center' }}>Extracting live data for {TEAMS.find(t => t.id === selectedTeamId)?.shortName}</Text>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={{ color: colors.textSub, marginTop: 16, fontSize: 16, fontWeight: '600' }}>Fetching Live Squad Data...</Text>
+              <Text style={{ color: colors.textMuted, marginTop: 8, fontSize: 13, textAlign: 'center' }}>Extracting live data for {TEAMS.find(t => t.id === selectedTeamId)?.shortName}</Text>
             </View>
           ) : !selectedTeam?.players?.length ? (
-            <Text style={{ color: '#94a3b8', textAlign: 'center', marginTop: 20 }}>No players found.</Text>
+            <Text style={{ color: colors.textMuted, textAlign: 'center', marginTop: 20 }}>No players found.</Text>
           ) : (
             <>
               {/* Live Data Status */}
@@ -448,42 +469,42 @@ export default function OmniPitchDashboard() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#050c18' },
+const createStyles = (colors: any) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
   hero: { paddingTop: Platform.OS === 'android' ? 16 : 10, paddingBottom: 18, paddingHorizontal: 16 },
   heroRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 18 },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 26, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5, lineHeight: 30 },
-  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6, fontWeight: '500' },
-  heroCounters: { gap: 8, alignItems: 'flex-end' },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 26, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5, lineHeight: 30 },
+  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6, fontWeight: '500' },
+  heroCounters: { gap: 8, flexDirection: 'row', alignItems: 'center' },
   heroCounter: {
-    alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', backgroundColor: colors.heroCardBg,
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', minWidth: 62,
+    borderWidth: 1, borderColor: colors.heroCardBg, minWidth: 62, justifyContent: 'center'
   },
-  heroCountNum: { fontSize: 22, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
-  heroCountLabel: { fontSize: 9, color: '#3b6cc0', fontWeight: '800', letterSpacing: 1, marginTop: 2, textTransform: 'uppercase' },
+  heroCountNum: { fontSize: 22, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
+  heroCountLabel: { fontSize: 9, color: colors.heroEyebrow, fontWeight: '800', letterSpacing: 1, marginTop: 2, textTransform: 'uppercase' },
   teamPills: { gap: 8, paddingBottom: 2 },
   teamPill: {
     paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: colors.heroCardBg, borderWidth: 1, borderColor: colors.heroCardBg,
   },
-  teamPillActive: { backgroundColor: '#1e4db7', borderColor: '#3b82f6' },
-  teamPillText: { fontSize: 13, fontWeight: '700', color: '#4a6fa5' },
-  teamPillTextActive: { color: '#fff' },
+  teamPillActive: { backgroundColor: colors.primary, borderColor: colors.borderFocus },
+  teamPillText: { fontSize: 13, fontWeight: '700', color: colors.textSub },
+  teamPillTextActive: { color: colors.textInverse },
   sectionLabel: {
-    fontSize: 10, fontWeight: '900', color: '#2d4a6e',
+    fontSize: 10, fontWeight: '900', color: colors.textMuted,
     marginBottom: 10, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 4,
   },
   card: {
-    backgroundColor: '#08142a', borderRadius: 16, padding: 12, marginBottom: 20,
-    borderWidth: 1, borderColor: '#0f2040',
+    backgroundColor: colors.bgCard, borderRadius: 16, padding: 12, marginBottom: 20,
+    borderWidth: 1, borderColor: colors.borderBase,
   },
   dropdownDetail: {
-    backgroundColor: '#08142a',
+    backgroundColor: colors.bgDropdown,
     borderWidth: 1,
-    borderColor: '#1e3d70',
+    borderColor: colors.borderStrong,
     borderRadius: 14,
     padding: 16,
     marginTop: 6,
@@ -498,82 +519,82 @@ const styles = StyleSheet.create({
   playerBanner: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   bigAvatar: {
     width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center',
-    marginRight: 14, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)',
+    marginRight: 14, borderWidth: 2, borderColor: colors.borderBase, backgroundColor: colors.bgCardAlt,
   },
-  bigAvatarText: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  playerName: { fontSize: 18, fontWeight: '800', color: '#dde8fb', letterSpacing: -0.3 },
-  playerMeta: { fontSize: 12, color: '#3d5068', marginTop: 3, fontWeight: '500' },
+  bigAvatarText: { color: colors.textTitle, fontSize: 20, fontWeight: '900' },
+  playerName: { fontSize: 18, fontWeight: '800', color: colors.textTitle, letterSpacing: -0.3 },
+  playerMeta: { fontSize: 12, color: colors.textMuted, marginTop: 3, fontWeight: '500' },
   statsRow: { flexDirection: 'row' },
   insightCard: {
-    backgroundColor: '#091426', borderRadius: 16, padding: 16, marginBottom: 16,
-    borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 10, elevation: 4,
+    backgroundColor: colors.bgCardAlt, borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: colors.borderSubtle,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 2,
   },
   insightHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
   insightLabel: { fontSize: 14, fontWeight: '800', flex: 1, letterSpacing: 0.1 },
   confBadge: { borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4 },
   confText: { fontSize: 11, fontWeight: '900' },
-  insightBody: { fontSize: 13, color: '#7a90b0', lineHeight: 21, marginBottom: 12 },
+  insightBody: { fontSize: 13, color: colors.textSub, lineHeight: 21, marginBottom: 12 },
   indicatorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   indicator: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
   indValue: { fontSize: 13, fontWeight: '800' },
-  indLabel: { fontSize: 10, color: '#3d5068', marginTop: 2, fontWeight: '600' },
+  indLabel: { fontSize: 10, color: colors.textMuted, marginTop: 2, fontWeight: '600' },
   appliedCard: {
-    backgroundColor: '#0d1826', borderRadius: 16, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: '#22d3a030',
-    shadowColor: '#22d3a0', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+    backgroundColor: colors.bgDropdown, borderRadius: 16, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: colors.success,
+    shadowColor: colors.success, shadowOpacity: 0.1, shadowRadius: 12, elevation: 2,
   },
   appliedHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
-  appliedTitle: { fontSize: 14, fontWeight: '800', color: '#22d3a0' },
-  appliedScenario: { fontSize: 12, color: '#3d5068', marginTop: 2 },
+  appliedTitle: { fontSize: 14, fontWeight: '800', color: colors.success },
+  appliedScenario: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   schedChangeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-  schedOriginal: { flex: 1, backgroundColor: '#080d16', borderRadius: 9, padding: 10 },
-  schedStrike: { fontSize: 12, color: '#3d5068', textDecorationLine: 'line-through' },
-  schedArrow: { fontSize: 16, color: '#fbbf24', fontWeight: '900' },
+  schedOriginal: { flex: 1, backgroundColor: colors.bgCardAlt, borderRadius: 9, padding: 10 },
+  schedStrike: { fontSize: 12, color: colors.textMuted, textDecorationLine: 'line-through' },
+  schedArrow: { fontSize: 16, color: colors.warning, fontWeight: '900' },
   schedNew: {
-    flex: 1.5, flexDirection: 'row', backgroundColor: '#fbbf2410', borderRadius: 9, padding: 10,
-    borderWidth: 1, borderColor: '#fbbf2425', gap: 8,
+    flex: 1.5, flexDirection: 'row', backgroundColor: colors.bgCardAlt, borderRadius: 9, padding: 10,
+    borderWidth: 1, borderColor: colors.warning, gap: 8,
   },
   schedNewIcon: { fontSize: 16, marginTop: 1 },
-  schedNewTitle: { fontSize: 12, fontWeight: '800', color: '#fbbf24' },
-  schedNewMeta: { fontSize: 10, color: '#7a90b0', marginTop: 2 },
-  appliedHint: { fontSize: 12, color: '#3d5068', marginTop: 8, textAlign: 'center' },
+  schedNewTitle: { fontSize: 12, fontWeight: '800', color: colors.warning },
+  schedNewMeta: { fontSize: 10, color: colors.textSub, marginTop: 2 },
+  appliedHint: { fontSize: 12, color: colors.textMuted, marginTop: 8, textAlign: 'center' },
   actionBtn: {
-    backgroundColor: '#2563eb', borderRadius: 16, padding: 18, marginBottom: 10,
-    shadowColor: '#4f8ef7', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    backgroundColor: colors.primary, borderRadius: 16, padding: 18, marginBottom: 10,
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
   actionBtnDone: {
-    backgroundColor: '#0d1826', borderWidth: 1, borderColor: '#1a2840', shadowOpacity: 0, elevation: 0,
+    backgroundColor: colors.bgDropdown, borderWidth: 1, borderColor: colors.borderStrong, shadowOpacity: 0, elevation: 0,
   },
-  actionBtnProc: { backgroundColor: '#1d4ed8' },
+  actionBtnProc: { backgroundColor: colors.primary, opacity: 0.8 },
   actionInner: { flexDirection: 'row', alignItems: 'center' },
-  actionText: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
-  actionSub: { color: '#93c5fd', fontSize: 12, marginTop: 2 },
+  actionText: { color: colors.textInverse, fontSize: 15, fontWeight: '800', letterSpacing: 0.2 },
+  actionSub: { color: colors.heroGrad1, fontSize: 12, marginTop: 2 },
   allGoodCard: {
-    flexDirection: 'row', backgroundColor: '#22d3a010', borderRadius: 16, padding: 18,
-    marginBottom: 16, borderWidth: 1, borderColor: '#22d3a020', alignItems: 'center', gap: 12,
+    flexDirection: 'row', backgroundColor: colors.bgCardAlt, borderRadius: 16, padding: 18,
+    marginBottom: 16, borderWidth: 1, borderColor: colors.success, alignItems: 'center', gap: 12,
   },
-  allGoodText: { fontSize: 14, color: '#7a90b0', flex: 1, lineHeight: 22 },
+  allGoodText: { fontSize: 14, color: colors.textSub, flex: 1, lineHeight: 22 },
   resetBtn: { alignItems: 'center', padding: 14 },
-  resetText: { color: '#3d5068', fontSize: 13, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  resetText: { color: colors.textMuted, fontSize: 13, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: colors.modalOverlay, justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: '#0d1826', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    backgroundColor: colors.bgCard, borderTopLeftRadius: 28, borderTopRightRadius: 28,
     padding: 24, paddingBottom: Platform.OS === 'ios' ? 44 : 28,
-    borderTopWidth: 1, borderColor: '#1e2d42',
-    shadowColor: '#000', shadowOpacity: 0.6, shadowRadius: 30, elevation: 30,
+    borderTopWidth: 1, borderColor: colors.borderBase,
+    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 30, elevation: 30,
   },
-  modalHandle: { width: 36, height: 4, backgroundColor: '#1e2d42', borderRadius: 2, alignSelf: 'center', marginBottom: 22 },
+  modalHandle: { width: 36, height: 4, backgroundColor: colors.borderStrong, borderRadius: 2, alignSelf: 'center', marginBottom: 22 },
   modalTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   priorBadge: {
-    backgroundColor: '#f8717120', borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: '#f8717140',
+    backgroundColor: colors.bgCardAlt, borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: colors.danger,
   },
-  priorText: { color: '#fca5a5', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#dde8fb', marginBottom: 8, letterSpacing: -0.3 },
-  modalBody: { fontSize: 14, color: '#7a90b0', lineHeight: 23, marginBottom: 14 },
-  modalScheduleNote: { fontSize: 13, color: '#fbbf24', marginBottom: 16, fontWeight: '700' },
+  priorText: { color: colors.danger, fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.textTitle, marginBottom: 8, letterSpacing: -0.3 },
+  modalBody: { fontSize: 14, color: colors.textSub, lineHeight: 23, marginBottom: 14 },
+  modalScheduleNote: { fontSize: 13, color: colors.warning, marginBottom: 16, fontWeight: '700' },
   chipRow: { flexDirection: 'row', gap: 8 },
-  chip: { backgroundColor: '#1a2840', borderRadius: 9, paddingHorizontal: 13, paddingVertical: 7, borderWidth: 1, borderColor: '#1e2d42' },
-  chipText: { color: '#7a90b0', fontSize: 12, fontWeight: '700' },
+  chip: { backgroundColor: colors.bgCardAlt, borderRadius: 9, paddingHorizontal: 13, paddingVertical: 7, borderWidth: 1, borderColor: colors.borderSubtle },
+  chipText: { color: colors.textSub, fontSize: 12, fontWeight: '700' },
 });
