@@ -106,9 +106,20 @@ export function getBaseline(pos: Position): Baseline {
   };
 }
 
+// ─── AI Analysis Cache ────────────────────────────────────────────────────────
+let cachedAiAnalysis: Record<string, AnalysisResult> = {};
+
+export function setCachedAnalysis(analysisData: Record<string, AnalysisResult>) {
+  cachedAiAnalysis = analysisData;
+}
+
 // ─── Core Analysis Function ─────────────────────────────────────────────────
 
 export function analyzePlayer(player: Player): AnalysisResult {
+  if (cachedAiAnalysis[player.id]) {
+    return cachedAiAnalysis[player.id];
+  }
+
   const s = player.stats;
   const baseline = getBaseline(player.position);
   const anomalies: Anomaly[] = [];

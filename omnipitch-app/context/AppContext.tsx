@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { type PlayerOverride } from '@/data/schedule';
 import { generateInterventionSessions } from '@/data/schedule';
-import { TEAMS, analyzePlayer, type Player, type TeamData } from '@/data/team';
+import { TEAMS, analyzePlayer, setCachedAnalysis, type Player, type TeamData } from '@/data/team';
+import { Colors } from '@/constants/theme';
 
 // ─── Context Types ──────────────────────────────────────────────────────────
 
@@ -24,8 +25,12 @@ interface AppState {
   hasIntervention: (playerId: string) => boolean;
   /** Get overrides for a specific original session ID */
   getOverridesForSession: (originalSessionId: string) => PlayerOverride[];
-  /** Is the current team data being scraped/loaded? */
   isLoadingTeam: boolean;
+  generateAiIntervention: (player: Player) => Promise<AnalysisResult | null>;
+  generateAiScenarios: (players: Player[]) => Promise<any[] | null>;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  colors: typeof Colors.light;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -40,12 +45,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [overrides, setOverrides] = useState<Record<string, PlayerOverride[]>>({});
   const [teamsDataState, setTeamsDataState] = useState<TeamData[]>(TEAMS);
   const [isLoadingTeam, setIsLoadingTeam] = useState<boolean>(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  }, []);
+
+  const currentColors = Colors[theme];
 
   const selectedTeam = teamsDataState.find(t => t.id === selectedTeamId) || teamsDataState[0];
 
   const switchTeam = useCallback(async (teamId: string) => {
     setSelectedTeamId(teamId);
     setOverrides({}); // Reset interventions when switching teams
+    setCachedAnalysis({}); // Clear AI cache when switching teams
     
     // Attempt real-time fetch from local server
     setIsLoadingTeam(true);
@@ -61,14 +74,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       const response = await fetch(`${serverUrl}/api/scrape/${teamId}`);
       if (response.ok) {
-        const freshData = await response.json();
+        const teamData = await response.json();
+        
+        // Save the team data
         setTeamsDataState(prev => {
           const newTeams = [...prev];
           const idx = newTeams.findIndex(t => t.id === teamId);
           if (idx !== -1) {
-            newTeams[idx] = freshData;
+            newTeams[idx] = teamData;
           } else {
-            newTeams.push(freshData);
+            newTeams.push(teamData);
           }
           return newTeams;
         });
@@ -142,6 +157,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return all;
   }, [overrides]);
 
+  const generateAiIntervention = useCallback(async (player: Player) => {
+    try {
+      let serverUrl = 'http://localhost:3000';
+      if (Constants.expoConfig?.hostUri) {
+        const ip = Constants.expoConfig.hostUri.split(':')[0];
+        serverUrl = `http://${ip}:3000`;
+      } else if (Platform.OS === 'android') {
+        serverUrl = 'http://10.0.2.2:3000';
+      }
+      const response = await fetch(`${serverUrl}/api/agent/intervention`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player }),
+      });
+      if (response.ok) {
+        const analysis = await response.json();
+        setCachedAnalysis((prev: any) => ({ ...prev, [player.id]: analysis }));
+        return analysis as AnalysisResult;
+      }
+    } catch (e) {
+      console.error('Groq Intervention API error', e);
+    }
+    return null;
+  }, []);
+
+  const generateAiScenarios = useCallback(async (players: Player[]) => {
+    try {
+      let serverUrl = 'http://localhost:3000';
+      if (Constants.expoConfig?.hostUri) {
+        const ip = Constants.expoConfig.hostUri.split(':')[0];
+        serverUrl = `http://${ip}:3000`;
+      } else if (Platform.OS === 'android') {
+        serverUrl = 'http://10.0.2.2:3000';
+      }
+      const response = await fetch(`${serverUrl}/api/agent/scenarios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players }),
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (e) {
+      console.error('Groq Scenarios API error', e);
+    }
+    return null;
+  }, []);
+
   return (
     <AppContext.Provider value={{
       selectedTeamId,
@@ -154,6 +217,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hasIntervention,
       getOverridesForSession,
       isLoadingTeam,
+      generateAiIntervention,
+      generateAiScenarios,
+      theme,
+      toggleTheme,
+      colors: currentColors,
     }}>
       {children}
     </AppContext.Provider>
