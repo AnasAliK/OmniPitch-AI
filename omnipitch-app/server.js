@@ -2,8 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { chromium } = require('playwright');
-const Groq = require('groq-sdk');
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
 
 const app = express();
 app.use(cors());
@@ -165,30 +164,40 @@ app.get('/api/scrape/:teamId', async (req, res) => {
 app.post('/api/agent/intervention', async (req, res) => {
   try {
     const { player } = req.body;
-    const prompt = `You are an Elite Football Data Analyst AI agent working for a top-tier Champions League club.
-Your task is to analyze this specific player's stats and detect vulnerabilities against positional baselines, then make a highly creative, cutting-edge intervention.
-DO NOT use generic training sessions (like "Finishing Drills"). You must suggest hyper-modern interventions (e.g., "VR Cognitive Scanning", "Neuro-plasticity Reaction Training", "Bio-band Sleep Cycle Reset").
+    const prompt = `# ROLE AND DIRECTIVE
+You are OmniPitch AI, an autonomous, elite sports science and tactical analyst agent. Your primary directive is to process raw player performance data and dynamically generate highly specific, non-repeating training interventions. You operate on the OODA Loop architecture (Observe, Orient, Decide, Act).
 
-Generate this exact JSON structure (NOT an array, just the object):
+# STRICT CONSTRAINTS & RULES
+1. AUTONOMY: Do NOT rely on hardcoded or generic fallback responses. Every single intervention must be uniquely generated based on the specific player's data, position, and identified anomalies.
+2. NO REPETITION: Never output the same 5 standard interventions (e.g., "Hydrotherapy", "Light Activation") for every player. Be creative, specific, and tactically accurate.
+3. FORMAT: You are communicating directly with a frontend application. Your entire response MUST be a single, valid, parseable JSON object. Absolutely no markdown formatting (like \`\`\`json), no conversational filler, and no text outside the JSON structure.
+
+# THE OODA LOOP WORKFLOW
+Step 1: OBSERVE - Ingest the provided player data (Stats vs. Baselines).
+Step 2: ORIENT - Identify the specific anomaly (categorized strictly as "Physical", "Tactical", or "Technical") and calculate a confidence score.
+Step 3: DECIDE - Formulate a custom, dynamic intervention schedule that directly targets the anomaly.
+Step 4: ACT - Output the state change via the JSON schema below.
+
+# REQUIRED JSON SCHEMA OUTPUT
 {
-  "playerId": "string",
-  "hasIssue": true,
-  "category": "Technical" | "Physical" | "Tactical",
-  "title": "string (e.g., 'Physical: Fatigue & Output Decline')",
-  "severity": "low" | "medium" | "high" | "critical",
-  "confidence": number (0-100),
-  "reasoning": "string (Explain exactly which stats caused this vulnerability and why)",
-  "anomalies": [
-    { "metric": "string", "actual": "string", "baseline": "string", "deviation": "below" | "above", "severity": number (0-1) }
+  "scenario_tab": {
+    "category": "[Must be exactly: Physical, Tactical, or Technical]",
+    "anomaly_title": "[Dynamic, highly specific title of the issue, e.g., 'Mid-block Defensive Line Positioning Error']",
+    "confidence_score": [Integer between 70 and 99]
+  },
+  "interventions": [
+    {
+      "title": "[Dynamic, specific drill/recovery name, e.g., 'Asymmetric Rondo for Press Resistance']",
+      "duration_mins": [Integer],
+      "schedule_day": "[Day of the week]",
+      "schedule_time": "[Time, e.g., '10:30 AM']",
+      "icon_type": "[Choose one: water, brain, cone, barbell, target]"
+    }
+    // Must generate between 2 to 4 unique interventions per player
   ],
-  "indicators": [
-    { "label": "string", "value": "string", "color": "string (hex color, e.g., #ef4444 for bad, #f59e0b for warning)" }
-  ],
-  "intervention": {
-    "primary": "string (Title of the specific training session to fix this vulnerability)",
-    "secondary": "string (Description of the session)",
-    "duration": "string (e.g., '48h Recovery Protocol')",
-    "statusChange": "Technical Focus" | "Recovery" | "Tactical Review"
+  "ooda_trace": {
+    "orient_summary": "[1-2 sentences explaining exactly why the baseline was missed based on the raw data.]",
+    "decide_summary": "[1-2 sentences explaining the tactical or physical reasoning behind your chosen interventions.]"
   }
 }
 
@@ -200,17 +209,56 @@ ${JSON.stringify({
       stats: player.stats
     }, null, 2)}`;
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "OmniPitch",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      })
     });
 
-    const analysis = JSON.parse(response.choices[0].message.content);
+    if (!response.ok) {
+      throw new Error(`OpenRouter API Error: ${response.status} ${await response.text()}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(`OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}`);
+    }
+
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error("No response choices from OpenRouter API. " + JSON.stringify(data));
+    }
+
+    let content = data.choices[0].message?.content;
+    if (!content) {
+      throw new Error("Choice message content is empty/null. Message: " + JSON.stringify(data.choices[0].message));
+    }
+
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      content = content.substring(firstBrace, lastBrace + 1);
+    }
+
+    const analysis = JSON.parse(content);
+    // Append playerId and hasIssue so frontend can map cleanly
+    analysis.playerId = player.id;
+    analysis.hasIssue = true;
+
+    console.log(`\n[AI Intervention Response for ${player?.name || 'Unknown'}]:`, JSON.stringify(analysis, null, 2));
     res.json(analysis);
   } catch (error) {
-    console.error("Agent API error (Intervention):", error);
-    res.status(500).json({ error: error.message });
+    console.error("Agent API error (Intervention):", error.message || error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 
@@ -230,19 +278,25 @@ Generate this exact JSON structure:
         {
           "player": { "id": "string", "name": "string", "avatarInitials": "string", "avatarColor": "string", "position": "string" },
           "analysis": {
+            "playerId": "string (must match player.id)",
             "hasIssue": true,
-            "category": "Technical" | "Physical" | "Tactical",
-            "title": "string",
-            "severity": "low" | "medium" | "high" | "critical",
-            "confidence": number,
-            "reasoning": "string",
-            "anomalies": [{ "metric": "string", "actual": "string", "baseline": "string", "deviation": "below" | "above", "severity": number }],
-            "indicators": [{ "label": "string", "value": "string", "color": "string" }],
-            "intervention": {
-              "primary": "string",
-              "secondary": "string",
-              "duration": "string",
-              "statusChange": "Technical Focus" | "Recovery" | "Tactical Review"
+            "scenario_tab": {
+              "category": "Technical" | "Physical" | "Tactical",
+              "anomaly_title": "string (highly specific, e.g. 'Clinical Execution Drop')",
+              "confidence_score": number (integer between 70 and 99)
+            },
+            "interventions": [
+              {
+                "title": "string (specific drill name)",
+                "duration_mins": number,
+                "schedule_day": "string (day of week)",
+                "schedule_time": "string (e.g. '10:00 AM')",
+                "icon_type": "water" | "brain" | "cone" | "barbell" | "target"
+              }
+            ],
+            "ooda_trace": {
+              "orient_summary": "string (1-2 sentences reasoning)",
+              "decide_summary": "string (1-2 sentences tactical choice explanation)"
             }
           }
         }
@@ -261,17 +315,52 @@ ${JSON.stringify(players.map(p => ({
       stats: p.stats
     })), null, 2)}`;
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:3000",
+        "X-Title": "OmniPitch",
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      })
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    if (!response.ok) {
+      throw new Error(`OpenRouter API Error: ${response.status} ${await response.text()}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(`OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}`);
+    }
+
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error("No response choices from OpenRouter API. " + JSON.stringify(data));
+    }
+
+    let content = data.choices[0].message?.content;
+    if (!content) {
+      throw new Error("Choice message content is empty/null. Message: " + JSON.stringify(data.choices[0].message));
+    }
+
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      content = content.substring(firstBrace, lastBrace + 1);
+    }
+
+    const result = JSON.parse(content);
+    console.log(`\n[AI Scenarios Response]:`, JSON.stringify(result, null, 2));
     res.json(result.scenarios);
   } catch (error) {
-    console.error("Agent API error (Scenarios):", error);
-    res.status(500).json({ error: error.message });
+    console.error("Agent API error (Scenarios):", error.message || error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
 

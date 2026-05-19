@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { type PlayerOverride } from '@/data/schedule';
 import { generateInterventionSessions } from '@/data/schedule';
-import { TEAMS, analyzePlayer, setCachedAnalysis, type Player, type TeamData } from '@/data/team';
+import { TEAMS, analyzePlayer, setCachedAnalysis, addCachedAnalysis, type Player, type TeamData, type AnalysisResult } from '@/data/team';
 import { Colors } from '@/constants/theme';
 
 // ─── Context Types ──────────────────────────────────────────────────────────
@@ -107,10 +107,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!analysis.hasIssue) return;
 
     const { replacements } = generateInterventionSessions(
-      analysis.category,
+      analysis.scenario_tab.category,
       player.shortName,
-      analysis.intervention.primary,
-      analysis.intervention.secondary,
+      analysis.ooda_trace.decide_summary,
+      analysis.interventions
     );
 
     const playerOverrides: PlayerOverride[] = replacements.map(r => ({
@@ -118,8 +118,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       playerName: player.shortName,
       originalSessionId: r.originalId,
       replacementSession: r.session,
-      reason: analysis.reasoning,
-      scenarioLabel: analysis.title,
+      reason: analysis.ooda_trace.orient_summary,
+      scenarioLabel: analysis.scenario_tab.anomaly_title,
       appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }));
 
@@ -173,7 +173,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       if (response.ok) {
         const analysis = await response.json();
-        setCachedAnalysis((prev: any) => ({ ...prev, [player.id]: analysis }));
+        addCachedAnalysis(player.id, analysis);
         return analysis as AnalysisResult;
       }
     } catch (e) {

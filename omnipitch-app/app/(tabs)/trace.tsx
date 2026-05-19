@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
+import { analyzePlayer, type Player, type AnalysisResult } from '@/data/team';
 import { useApp } from '@/context/AppContext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -23,7 +23,15 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 function buildTraceSteps(player: Player, analysis: AnalysisResult) {
   const s = player.stats;
   const duelRate = s.groundDuelsTotal > 0 ? ((s.groundDuelsWon / s.groundDuelsTotal) * 100).toFixed(0) : '0';
-  const convRate = s.shotsTotal > 0 ? ((s.goals / s.shotsTotal) * 100).toFixed(1) : '0';
+
+  const statusChangeMap: Record<string, string> = {
+    Technical: 'Technical Focus',
+    Physical: 'Recovery',
+    Tactical: 'Tactical Review',
+    None: 'Active'
+  };
+  const statusChange = statusChangeMap[analysis.scenario_tab.category] || 'Active';
+  const primaryInv = analysis.interventions[0]?.title || 'Custom Intervention';
 
   // Build Orient content dynamically from anomalies
   let orientContent: string;
@@ -38,18 +46,16 @@ function buildTraceSteps(player: Player, analysis: AnalysisResult) {
 Conclusion: No anomaly detected.
 Confidence: N/A`;
   } else {
-    const anomalyLines = analysis.anomalies.map((a, i) =>
-      `${i + 1}. ${a.metric}: ${a.actual}\n   → Baseline: ${a.baseline}\n   → Deviation: ${a.deviation} (severity: ${(a.severity * 100).toFixed(0)}%)`
-    ).join('\n\n');
+    orientContent = `Anomaly Detection:
 
-    orientContent = `Anomaly Detection (${analysis.anomalies.length} found):
+${analysis.ooda_trace.orient_summary}
 
-${anomalyLines}
-
-Classification: ${analysis.category.toUpperCase()} issue
-Confidence: ${analysis.confidence}%
+Classification: ${analysis.scenario_tab.category.toUpperCase()} issue
+Confidence: ${analysis.scenario_tab.confidence_score}%
 Auto-generated from position-specific baseline comparison.`;
   }
+
+  const interventionsList = analysis.interventions.map(i => `\n  • [${i.icon_type.toUpperCase()}] ${i.title} (${i.duration_mins}m on ${i.schedule_day} @ ${i.schedule_time})`).join('');
 
   return [
     {
@@ -106,16 +112,15 @@ All monitored indicators within baselines:
   ✓ No tactical concerns
 
 Action: Continue current training program.`
-        : `Issue Detected: "${analysis.title}"
-Category: ${analysis.category}
+        : `Issue Detected: "${analysis.scenario_tab.anomaly_title}"
+Category: ${analysis.scenario_tab.category}
 
-Anomalies: ${analysis.indicators.map(i => `\n  ${i.color === '#10b981' ? '✓' : '⚠'} ${i.label}: ${i.value}`).join('')}
+Intervention Reasoning:
+${analysis.ooda_trace.decide_summary}
 
-Generated Intervention:
-  • Primary: ${analysis.intervention.primary}
-  • Secondary: ${analysis.intervention.secondary}
-  • Duration: ${analysis.intervention.duration}
-  • Status Change: ${player.status} → ${analysis.intervention.statusChange}`,
+Scheduled Interventions: ${interventionsList}
+
+Status Change: ${player.status} → ${statusChange}`,
     },
     {
       id: 'act',
@@ -131,8 +136,8 @@ Player remains in current program.`
   player_id: "${player.id}",
   player_name: "${player.name}",
   updates: {
-    status: "${player.status}" → "${analysis.intervention.statusChange}",
-    training: "${analysis.intervention.primary}",
+    status: "${player.status}" → "${statusChange}",
+    training: "${primaryInv}",
     schedule_override: true,
     notification: {
       recipients: ["Head Coach", "${player.shortName}"],
@@ -143,7 +148,7 @@ Player remains in current program.`
 
 Result: ✓ Database updated
         ✓ Notifications dispatched
-        ✓ Schedule rewritten for ${analysis.intervention.duration}`,
+        ✓ Schedule rewritten for dynamic OODA loop interventions`,
     },
   ];
 }
@@ -204,7 +209,6 @@ export default function AgentTraceScreen() {
   const analysis = analyzePlayer(selectedPlayer);
   const steps = buildTraceSteps(selectedPlayer, analysis);
 
-  const flaggedPlayers = selectedTeam.players.filter(p => analyzePlayer(p).hasIssue);
   const allPlayers = selectedTeam.players;
 
   return (
@@ -254,15 +258,15 @@ export default function AgentTraceScreen() {
             <Text style={styles.sumLabel}>Scenario</Text>
             <View style={[styles.scenBadge, { backgroundColor: analysis.hasIssue ? colors.warning + '20' : colors.success + '20' }]}>
               <Text style={[styles.scenText, { color: analysis.hasIssue ? colors.warning : colors.success }]}>
-                {analysis.title}
+                {analysis.scenario_tab.anomaly_title}
               </Text>
             </View>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.sumLabel}>Confidence</Text>
-            <Text style={[styles.sumValue, { color: analysis.confidence >= 80 ? colors.success : colors.warning }]}>
-              {analysis.confidence > 0 ? `${analysis.confidence}%` : 'N/A'}
+            <Text style={[styles.sumValue, { color: analysis.scenario_tab.confidence_score >= 80 ? colors.success : colors.warning }]}>
+              {analysis.scenario_tab.confidence_score > 0 ? `${analysis.scenario_tab.confidence_score}%` : 'N/A'}
             </Text>
           </View>
         </View>

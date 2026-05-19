@@ -33,8 +33,8 @@ export function TeamPerformanceSummary({ team }: { team: TeamData }) {
       else if (['CB', 'LB', 'RB'].includes(p.position)) group = 'DEF';
       else group = 'GK';
 
-      if (analysis.category !== 'None') {
-        alertGrid[group][analysis.category]++;
+      if (analysis.scenario_tab.category !== 'None') {
+        alertGrid[group][analysis.scenario_tab.category]++;
       }
     }
   });

@@ -87,9 +87,46 @@ export const DEFAULT_SCHEDULE: PracticeSession[] = [
 export function generateInterventionSessions(
   category: string,
   playerName: string,
-  interventionPrimary: string,
-  interventionSecondary: string,
+  decideSummary: string,
+  aiInterventions?: any[]
 ): { replacements: { originalId: string; session: PracticeSession }[] } {
+
+  if (aiInterventions && aiInterventions.length > 0) {
+    const iconMap: Record<string, string> = {
+      water: '💧',
+      brain: '🧠',
+      cone: '⚠️',
+      barbell: '🏋️',
+      target: '🎯'
+    };
+
+    return {
+      replacements: aiInterventions.map((inv, idx) => {
+        const dayPrefix = inv.schedule_day.substring(0, 3).toLowerCase();
+        const timeLower = inv.schedule_time.toLowerCase();
+        const isPm = timeLower.includes('pm');
+        const isAfternoon = isPm && !timeLower.startsWith('12');
+        const originalId = `${dayPrefix}-${isAfternoon ? 'afternoon' : 'morning'}`;
+
+        return {
+          originalId,
+          session: {
+            id: `int-${Date.now()}-${idx}`,
+            day: inv.schedule_day,
+            date: 'May 15', // dynamically calculated later or static representation
+            time: inv.schedule_time,
+            title: inv.title,
+            type: category.toLowerCase() as any,
+            duration: `${inv.duration_mins} mins`,
+            icon: iconMap[inv.icon_type] || '🤖',
+            participants: playerName,
+            notes: decideSummary,
+          }
+        };
+      })
+    };
+  }
+
   switch (category) {
     case 'Technical':
       return {

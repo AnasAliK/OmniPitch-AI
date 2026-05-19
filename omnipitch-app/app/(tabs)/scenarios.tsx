@@ -9,12 +9,12 @@ import {
   LayoutAnimation,
   UIManager,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TEAMS, analyzePlayer, getCategoryColor, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
+import { analyzePlayer, getCategoryColor, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
 import { useApp } from '@/context/AppContext';
-import { Image } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -34,8 +34,9 @@ function discoverScenarios(team: TeamData): DiscoveredScenario[] {
   team.players.forEach(player => {
     const analysis = analyzePlayer(player);
     if (analysis.hasIssue) {
-      if (!categoryMap[analysis.category]) categoryMap[analysis.category] = [];
-      categoryMap[analysis.category].push({ player, analysis });
+      const category = analysis.scenario_tab.category;
+      if (!categoryMap[category]) categoryMap[category] = [];
+      categoryMap[category].push({ player, analysis });
     }
   });
 
@@ -44,7 +45,7 @@ function discoverScenarios(team: TeamData): DiscoveredScenario[] {
   return Object.entries(categoryMap).map(([cat, players]) => ({
     category: cat as IssueCategory,
     icon: icons[cat] ?? '⚠️',
-    players: players.sort((a, b) => b.analysis.confidence - a.analysis.confidence),
+    players: players.sort((a, b) => b.analysis.scenario_tab.confidence_score - a.analysis.scenario_tab.confidence_score),
   }));
 }
 
@@ -61,10 +62,17 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
     setExpanded(!expanded);
   };
 
-  // Collect unique anomaly types across all players
+  // Collect unique anomaly titles across all players
   const allAnomalyTypes = [...new Set(
-    scenario.players.flatMap(({ analysis }) => analysis.anomalies.map(a => a.metric))
+    scenario.players.map(({ analysis }) => analysis?.scenario_tab?.anomaly_title).filter(Boolean)
   )];
+
+  const statusChangeMap: Record<string, string> = {
+    Technical: 'Technical Focus',
+    Physical: 'Recovery',
+    Tactical: 'Tactical Review',
+    None: 'Active'
+  };
 
   return (
     <TouchableOpacity
@@ -109,42 +117,50 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
           {/* Players */}
           <View style={cardStyles.section}>
             <Text style={cardStyles.sectionTitle}>🚨 Flagged Players</Text>
-            {scenario.players.map(({ player, analysis }) => (
-              <View key={player.id} style={cardStyles.playerRow}>
-                <View style={[cardStyles.playerAvatar, { backgroundColor: player.avatarColor + '25' }]}>
-                  {player.imageUrl ? (
-                    <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  ) : (
-                    <Text style={[cardStyles.playerInit, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
-                  )}
-                </View>
-                <View style={cardStyles.playerInfo}>
-                  <View style={cardStyles.playerHeader}>
-                    <Text style={cardStyles.playerName}>{player.name}</Text>
-                    <View style={[cardStyles.confBadge, { backgroundColor: sevColor(analysis.severity) + '20' }]}>
-                      <Text style={[cardStyles.confText, { color: sevColor(analysis.severity) }]}>
-                        {analysis.confidence}%
+            {scenario.players.map(({ player, analysis }) => {
+              const confidence = analysis?.scenario_tab?.confidence_score ?? 80;
+              const pSeverity = confidence >= 90 ? 'critical' : confidence >= 80 ? 'high' : 'medium';
+              const statusChange = statusChangeMap[analysis?.scenario_tab?.category ?? 'None'] || 'Active';
+              const primaryDrill = analysis?.interventions?.[0]?.title || 'Dynamic Drill';
+              const primaryDuration = analysis?.interventions?.[0]?.duration_mins ? `${analysis?.interventions?.[0]?.duration_mins} mins` : '45 mins';
+
+              return (
+                <View key={player.id} style={cardStyles.playerRow}>
+                  <View style={[cardStyles.playerAvatar, { backgroundColor: player.avatarColor + '25' }]}>
+                    {player.imageUrl ? (
+                      <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    ) : (
+                      <Text style={[cardStyles.playerInit, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
+                    )}
+                  </View>
+                  <View style={cardStyles.playerInfo}>
+                    <View style={cardStyles.playerHeader}>
+                      <Text style={cardStyles.playerName}>{player.name}</Text>
+                      <View style={[cardStyles.confBadge, { backgroundColor: sevColor(pSeverity) + '20' }]}>
+                        <Text style={[cardStyles.confText, { color: sevColor(pSeverity) }]}>
+                          {confidence}%
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={cardStyles.playerReason}>{analysis?.ooda_trace?.orient_summary ?? 'Analyzing...'}</Text>
+                    <View style={cardStyles.indRow}>
+                      {(analysis?.interventions ?? []).map((inv, i) => (
+                        <View key={i} style={[cardStyles.indChip, { backgroundColor: colors.bgDropdown, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, margin: 2 }]}>
+                          <Text style={[cardStyles.indText, { color: colors.textTitle, fontSize: 9 }]}>{inv.title} ({inv.duration_mins}m)</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={cardStyles.intBlock}>
+                      <Text style={cardStyles.intLabel}>Generated Intervention:</Text>
+                      <Text style={cardStyles.intValue}>{primaryDrill}</Text>
+                      <Text style={cardStyles.intDuration}>
+                        {primaryDuration} • → {statusChange}
                       </Text>
                     </View>
                   </View>
-                  <Text style={cardStyles.playerReason}>{analysis.reasoning}</Text>
-                  <View style={cardStyles.indRow}>
-                    {analysis.indicators.map((ind, i) => (
-                      <View key={i} style={[cardStyles.indChip, { backgroundColor: ind.color + '15' }]}>
-                        <Text style={[cardStyles.indText, { color: ind.color }]}>{ind.label}: {ind.value}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={cardStyles.intBlock}>
-                    <Text style={cardStyles.intLabel}>Generated Intervention:</Text>
-                    <Text style={cardStyles.intValue}>{analysis.intervention.primary}</Text>
-                    <Text style={cardStyles.intDuration}>
-                      {analysis.intervention.duration} • → {analysis.intervention.statusChange}
-                    </Text>
-                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       )}

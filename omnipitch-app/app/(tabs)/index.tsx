@@ -13,15 +13,15 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { TEAMS, analyzePlayer, getPositionColor, type Player, type AnalysisResult } from '@/data/team';
+import { useApp } from '@/context/AppContext';
+import { TeamPerformanceSummary, PlayerStatBars, PhysicalOutputTracker } from '@/components/DashboardVisuals';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
-import { useApp } from '@/context/AppContext';
-import { TeamPerformanceSummary, PlayerStatBars, PhysicalOutputTracker } from '@/components/DashboardVisuals';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -40,9 +40,10 @@ function PlayerRow({ player, onPress, isSelected, hasIntervention, colors }: {
   const rStyles = useMemo(() => createRowStyles(colors), [colors]);
   const analysis = analyzePlayer(player);
   const posColor = getPositionColor(player.position);
-  const hasProblem = analysis.type !== 'none';
-  const statusCol = hasIntervention ? '#f59e0b' : hasProblem ? severityColor[analysis.severity] : '#22c55e';
-  const statusLabel = hasIntervention ? 'MOD' : hasProblem ? (analysis.severity === 'critical' ? 'CRIT' : 'ALRT') : 'OK';
+  const hasProblem = analysis.hasIssue;
+  const pSeverity = analysis.scenario_tab.confidence_score >= 90 ? 'critical' : analysis.scenario_tab.confidence_score >= 80 ? 'high' : 'medium';
+  const statusCol = hasIntervention ? '#f59e0b' : hasProblem ? severityColor[pSeverity] : '#22c55e';
+  const statusLabel = hasIntervention ? 'MOD' : hasProblem ? (pSeverity === 'critical' ? 'CRIT' : 'ALRT') : 'OK';
 
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={[rStyles.container, isSelected ? rStyles.selected : null]}>
@@ -147,14 +148,14 @@ export default function OmniPitchDashboard() {
     if (selectedTeam?.players?.length > 0 && selectedPlayer && !selectedTeam.players.find(p => p.id === selectedPlayer.id)) {
       setSelectedPlayer(null);
     }
-  }, [selectedTeam, selectedPlayer?.id]);
+  }, [selectedTeam, selectedPlayer]);
 
   useEffect(() => {
     if (selectedPlayer && hasIntervention(selectedPlayer.id)) {
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     }
-  }, [hasIntervention, selectedPlayer?.id, fadeAnim]);
+  }, [hasIntervention, selectedPlayer, fadeAnim]);
 
   useEffect(() => {
     if (isProcessing) {
@@ -281,7 +282,13 @@ export default function OmniPitchDashboard() {
                   const hasInt = hasIntervention(p.id);
                   const pAnalysis = analyzePlayer(p);
                   const pIsApplied = hasIntervention(p.id);
-                  const pCurrentStatus = pIsApplied ? pAnalysis.intervention.statusChange : p.status;
+                  const statusChangeMap: Record<string, string> = {
+                    Technical: 'Technical Focus',
+                    Physical: 'Recovery',
+                    Tactical: 'Tactical Review',
+                    None: 'Active'
+                  };
+                  const pCurrentStatus = pIsApplied ? statusChangeMap[pAnalysis.scenario_tab.category] : p.status;
                   const pStatusColor = statusColors[pCurrentStatus] ?? '#64748b';
                   const pStats = p.stats;
                   const pConvRate = pStats.shotsTotal > 0 ? ((pStats.goals / pStats.shotsTotal) * 100).toFixed(1) : '0';
@@ -316,19 +323,19 @@ export default function OmniPitchDashboard() {
                           </View>
 
                           <View style={styles.statsRow}>
-                            <StatCard value={String(pStats.goals)} label="Goals" highlight={pAnalysis.category === 'Technical'} colors={colors} />
+                            <StatCard value={String(pStats.goals)} label="Goals" highlight={pAnalysis.scenario_tab.category === 'Technical'} colors={colors} />
                             <StatCard value={String(pStats.xG)} label="xG" colors={colors} />
                             <StatCard value={String(pStats.assists)} label="Assists" colors={colors} />
                             <StatCard value={String(pStats.xA)} label="xA" colors={colors} />
                           </View>
                           <View style={[styles.statsRow, { marginTop: 6 }]}>
-                            <StatCard value={`${pStats.minutesPlayed}'`} label="Minutes" highlight={pAnalysis.category === 'Physical'} colors={colors} />
+                            <StatCard value={`${pStats.minutesPlayed}'`} label="Minutes" highlight={pAnalysis.scenario_tab.category === 'Physical'} colors={colors} />
                             <StatCard value={`${pDuelRate}%`} label="Duels" colors={colors} />
                             <StatCard value={`${pStats.passingAccuracy}%`} label="Pass %" colors={colors} />
                             {pStats.savePercentage !== undefined ? (
-                              <StatCard value={`${pStats.savePercentage}%`} label="Save %" highlight={pAnalysis.category === 'Tactical'} colors={colors} />
+                              <StatCard value={`${pStats.savePercentage}%`} label="Save %" highlight={pAnalysis.scenario_tab.category === 'Tactical'} colors={colors} />
                             ) : (
-                              <StatCard value={`${pConvRate}%`} label="Conv %" highlight={pAnalysis.category === 'Technical'} colors={colors} />
+                              <StatCard value={`${pConvRate}%`} label="Conv %" highlight={pAnalysis.scenario_tab.category === 'Technical'} colors={colors} />
                             )}
                           </View>
 
@@ -344,20 +351,20 @@ export default function OmniPitchDashboard() {
 
                           {/* Analysis Insight */}
                           {pAnalysis.hasIssue && !pIsApplied && (
-                            <View style={[styles.insightCard, { borderColor: severityColor[pAnalysis.severity] + '40' }]}>
+                            <View style={[styles.insightCard, { borderColor: severityColor[pAnalysis.scenario_tab.confidence_score >= 90 ? 'critical' : pAnalysis.scenario_tab.confidence_score >= 80 ? 'high' : 'medium'] + '40' }]}>
                               <View style={styles.insightHeader}>
                                 <Text style={{ fontSize: 16 }}>🔍</Text>
-                                <Text style={[styles.insightLabel, { color: severityColor[pAnalysis.severity] }]}>{pAnalysis.title}</Text>
-                                <View style={[styles.confBadge, { backgroundColor: severityColor[pAnalysis.severity] + '20' }]}>
-                                  <Text style={[styles.confText, { color: severityColor[pAnalysis.severity] }]}>{pAnalysis.confidence}%</Text>
+                                <Text style={[styles.insightLabel, { color: severityColor[pAnalysis.scenario_tab.confidence_score >= 90 ? 'critical' : pAnalysis.scenario_tab.confidence_score >= 80 ? 'high' : 'medium'] }]}>{pAnalysis.scenario_tab.anomaly_title}</Text>
+                                <View style={[styles.confBadge, { backgroundColor: severityColor[pAnalysis.scenario_tab.confidence_score >= 90 ? 'critical' : pAnalysis.scenario_tab.confidence_score >= 80 ? 'high' : 'medium'] + '20' }]}>
+                                  <Text style={[styles.confText, { color: severityColor[pAnalysis.scenario_tab.confidence_score >= 90 ? 'critical' : pAnalysis.scenario_tab.confidence_score >= 80 ? 'high' : 'medium'] }]}>{pAnalysis.scenario_tab.confidence_score}%</Text>
                                 </View>
                               </View>
-                              <Text style={styles.insightBody}>{pAnalysis.reasoning}</Text>
+                              <Text style={styles.insightBody}>{pAnalysis.ooda_trace.orient_summary}</Text>
                               <View style={styles.indicatorRow}>
-                                {pAnalysis.indicators.map((ind, i) => (
-                                  <View key={i} style={[styles.indicator, { backgroundColor: ind.color + '15' }]}>
-                                    <Text style={[styles.indValue, { color: ind.color }]}>{ind.value}</Text>
-                                    <Text style={styles.indLabel}>{ind.label}</Text>
+                                {pAnalysis.interventions.map((inv, i) => (
+                                  <View key={i} style={[styles.indicator, { backgroundColor: colors.bgDropdown, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, margin: 2, minWidth: 110 }]}>
+                                    <Text style={[styles.indValue, { color: colors.textTitle, fontSize: 10, fontWeight: '700' }]}>{inv.title}</Text>
+                                    <Text style={[styles.indLabel, { fontSize: 8, marginTop: 2 }]}>{inv.schedule_day} • {inv.schedule_time}</Text>
                                   </View>
                                 ))}
                               </View>
@@ -371,7 +378,7 @@ export default function OmniPitchDashboard() {
                                 <Text style={{ fontSize: 20 }}>✅</Text>
                                 <View style={{ flex: 1 }}>
                                   <Text style={styles.appliedTitle}>Intervention Applied</Text>
-                                  <Text style={styles.appliedScenario}>{pAnalysis.title}</Text>
+                                  <Text style={styles.appliedScenario}>{pAnalysis.scenario_tab.anomaly_title}</Text>
                                 </View>
                               </View>
                               {pOverrides.map((o, i) => (
@@ -454,7 +461,7 @@ export default function OmniPitchDashboard() {
               </View>
             </View>
             <Text style={styles.modalTitle}>Intervention: {selectedPlayer?.shortName}</Text>
-            <Text style={styles.modalBody}>{notifPayload?.reasoning ?? ''}</Text>
+            <Text style={styles.modalBody}>{notifPayload?.ooda_trace?.orient_summary ?? ''}</Text>
             <Text style={styles.modalScheduleNote}>
               📅 Training schedule will be adjusted for the next 48 hours.
             </Text>

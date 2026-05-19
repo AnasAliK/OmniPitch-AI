@@ -32,6 +32,9 @@ export const Colors = {
     tabBg: '#ffffff',
     tabIconDefault: '#94a3b8',
     tabIconSelected: '#2563eb',
+    background: '#f8fafc',
+    text: '#0f172a',
+    icon: '#94a3b8',
   },
   dark: {
     bgBase: '#050c18',
@@ -59,6 +62,9 @@ export const Colors = {
     tabBg: '#060d1a',
     tabIconDefault: '#2d4a6a',
     tabIconSelected: '#60a5fa',
+    background: '#050c18',
+    text: '#e8f0ff',
+    icon: '#2d4a6a',
   },
 };
 

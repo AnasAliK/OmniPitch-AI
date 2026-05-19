@@ -39,6 +39,7 @@ export interface Player {
 }
 
 export interface TeamData {
+  id: string;
   name: string;
   shortName: string;
   league: string;
@@ -61,20 +62,24 @@ export interface Anomaly {
 export type IssueCategory = 'Technical' | 'Physical' | 'Tactical' | 'None';
 
 export interface AnalysisResult {
+  playerId: string;
   hasIssue: boolean;
-  category: IssueCategory;
-  title: string;
-  severity: 'none' | 'low' | 'medium' | 'high' | 'critical';
-  confidence: number;
-  reasoning: string;
-  anomalies: Anomaly[];
-  intervention: {
-    primary: string;
-    secondary: string;
-    duration: string;
-    statusChange: PlayerStatus;
+  scenario_tab: {
+    category: IssueCategory;
+    anomaly_title: string;
+    confidence_score: number;
   };
-  indicators: { label: string; value: string; color: string }[];
+  interventions: {
+    title: string;
+    duration_mins: number;
+    schedule_day: string;
+    schedule_time: string;
+    icon_type: 'water' | 'brain' | 'cone' | 'barbell' | 'target';
+  }[];
+  ooda_trace: {
+    orient_summary: string;
+    decide_summary: string;
+  };
 }
 
 // ─── Position-Specific Baselines ────────────────────────────────────────────
@@ -111,6 +116,10 @@ let cachedAiAnalysis: Record<string, AnalysisResult> = {};
 
 export function setCachedAnalysis(analysisData: Record<string, AnalysisResult>) {
   cachedAiAnalysis = analysisData;
+}
+
+export function addCachedAnalysis(playerId: string, analysis: AnalysisResult) {
+  cachedAiAnalysis[playerId] = analysis;
 }
 
 // ─── Core Analysis Function ─────────────────────────────────────────────────
@@ -216,11 +225,18 @@ export function analyzePlayer(player: Player): AnalysisResult {
   // ── No anomalies ─────────────────────────────────────────────────────
   if (anomalies.length === 0) {
     return {
-      hasIssue: false, category: 'None', title: 'No Issues Detected',
-      severity: 'none', confidence: 0,
-      reasoning: 'All metrics within position-specific baselines.',
-      anomalies: [], indicators: [],
-      intervention: { primary: 'Continue current program', secondary: 'Standard schedule', duration: 'N/A', statusChange: 'Active' },
+      playerId: player.id,
+      hasIssue: false,
+      scenario_tab: {
+        category: 'None',
+        anomaly_title: 'No Issues Detected',
+        confidence_score: 100,
+      },
+      interventions: [],
+      ooda_trace: {
+        orient_summary: 'All metrics within position-specific baselines.',
+        decide_summary: 'Continue current training schedule.',
+      }
     };
   }
 
@@ -265,7 +281,35 @@ export function analyzePlayer(player: Player): AnalysisResult {
     color: a.severity >= 0.6 ? '#ef4444' : a.severity >= 0.3 ? '#f59e0b' : '#10b981',
   }));
 
-  return { hasIssue: true, category, title, severity: overallSeverity, confidence, reasoning, anomalies, indicators, intervention };
+  return {
+    playerId: player.id,
+    hasIssue: true,
+    scenario_tab: {
+      category,
+      anomaly_title: title,
+      confidence_score: confidence,
+    },
+    interventions: [
+      {
+        title: intervention.primary,
+        duration_mins: 45,
+        schedule_day: 'Thursday',
+        schedule_time: '10:00 AM',
+        icon_type: category === 'Physical' ? 'barbell' : category === 'Tactical' ? 'brain' : 'target',
+      },
+      {
+        title: intervention.secondary,
+        duration_mins: 30,
+        schedule_day: 'Friday',
+        schedule_time: '03:00 PM',
+        icon_type: 'cone',
+      }
+    ],
+    ooda_trace: {
+      orient_summary: reasoning,
+      decide_summary: `Deploying targeted training to improve clinical outcomes and tactical understanding.`,
+    }
+  };
 }
 
 function generateIntervention(category: IssueCategory, anomalies: Anomaly[], player: Player) {
