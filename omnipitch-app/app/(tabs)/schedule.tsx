@@ -32,62 +32,63 @@ const typeLabels: Record<string, string> = {
 
 // ─── Session Card ───────────────────────────────────────────────────────────
 
-function SessionCard({ session, overrides }: { session: PracticeSession; overrides: PlayerOverride[] }) {
-  const color = typeColors[session.type] ?? '#64748b';
+function SessionCard({ session, overrides, colors }: { session: PracticeSession; overrides: PlayerOverride[]; colors: any }) {
+  const cStyles = React.useMemo(() => createCardStyles(colors), [colors]);
+  const color = typeColors[session.type] ?? colors.textMuted;
   const hasOverrides = overrides.length > 0;
 
   return (
-    <View style={[cardStyles.container, { borderLeftColor: color }]}>
+    <View style={[cStyles.container, { borderLeftColor: color }]}>
       {/* Header */}
-      <View style={cardStyles.header}>
-        <Text style={cardStyles.icon}>{session.icon}</Text>
-        <View style={cardStyles.headerInfo}>
-          <Text style={cardStyles.title}>{session.title}</Text>
-          <View style={cardStyles.metaRow}>
-            <Text style={cardStyles.time}>{session.time}</Text>
-            <Text style={cardStyles.dot}>•</Text>
-            <Text style={cardStyles.duration}>{session.duration}</Text>
-            <View style={[cardStyles.typeBadge, { backgroundColor: color + '20' }]}>
-              <Text style={[cardStyles.typeText, { color }]}>{typeLabels[session.type]}</Text>
+      <View style={cStyles.header}>
+        <Text style={cStyles.icon}>{session.icon}</Text>
+        <View style={cStyles.headerInfo}>
+          <Text style={cStyles.title}>{session.title}</Text>
+          <View style={cStyles.metaRow}>
+            <Text style={cStyles.time}>{session.time}</Text>
+            <Text style={cStyles.dot}>•</Text>
+            <Text style={cStyles.duration}>{session.duration}</Text>
+            <View style={[cStyles.typeBadge, { backgroundColor: color + '20' }]}>
+              <Text style={[cStyles.typeText, { color }]}>{typeLabels[session.type]}</Text>
             </View>
           </View>
         </View>
       </View>
 
       {/* Participants */}
-      <View style={cardStyles.participantRow}>
-        <Text style={cardStyles.participantLabel}>👥</Text>
-        <Text style={cardStyles.participantText}>{session.participants}</Text>
+      <View style={cStyles.participantRow}>
+        <Text style={cStyles.participantLabel}>👥</Text>
+        <Text style={cStyles.participantText}>{session.participants}</Text>
       </View>
 
       {/* Notes */}
       {session.notes && (
-        <Text style={cardStyles.notes}>{session.notes}</Text>
+        <Text style={cStyles.notes}>{session.notes}</Text>
       )}
 
       {/* Player Overrides */}
       {hasOverrides && (
-        <View style={cardStyles.overridesSection}>
-          <Text style={cardStyles.overridesTitle}>⚠️ Player Adjustments</Text>
+        <View style={cStyles.overridesSection}>
+          <Text style={cStyles.overridesTitle}>⚠️ Player Adjustments</Text>
           {overrides.map((o, i) => (
-            <View key={i} style={cardStyles.overrideRow}>
-              <View style={cardStyles.overrideHeader}>
-                <View style={cardStyles.overridePlayerBadge}>
-                  <Text style={cardStyles.overridePlayerText}>{o.playerName}</Text>
+            <View key={i} style={cStyles.overrideRow}>
+              <View style={cStyles.overrideHeader}>
+                <View style={cStyles.overridePlayerBadge}>
+                  <Text style={cStyles.overridePlayerText}>{o.playerName}</Text>
                 </View>
-                <View style={cardStyles.overrideScenBadge}>
-                  <Text style={cardStyles.overrideScenText}>{o.scenarioLabel}</Text>
+                <View style={cStyles.overrideScenBadge}>
+                  <Text style={cStyles.overrideScenText}>{o.scenarioLabel}</Text>
                 </View>
               </View>
-              <View style={cardStyles.replacementCard}>
-                <Text style={cardStyles.replacementIcon}>{o.replacementSession.icon}</Text>
+              <View style={cStyles.replacementCard}>
+                <Text style={cStyles.replacementIcon}>{o.replacementSession.icon}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={cardStyles.replacementTitle}>{o.replacementSession.title}</Text>
-                  <Text style={cardStyles.replacementMeta}>
+                  <Text style={cStyles.replacementTitle}>{o.replacementSession.title}</Text>
+                  <Text style={cStyles.replacementMeta}>
                     {o.replacementSession.time} • {o.replacementSession.duration}
                   </Text>
                   {o.replacementSession.notes && (
-                    <Text style={cardStyles.replacementNotes}>{o.replacementSession.notes}</Text>
+                    <Text style={cStyles.replacementNotes}>{o.replacementSession.notes}</Text>
                   )}
                 </View>
               </View>
@@ -101,40 +102,44 @@ function SessionCard({ session, overrides }: { session: PracticeSession; overrid
 
 // ─── Day Group ──────────────────────────────────────────────────────────────
 
-function DayGroup({ day, date, sessions, getOverridesForSession }: {
+function DayGroup({ day, date, sessions, getOverridesForSession, colors }: {
   day: string;
   date: string;
   sessions: PracticeSession[];
   getOverridesForSession: (id: string) => PlayerOverride[];
+  colors: any;
 }) {
+  const dStyles = React.useMemo(() => createDayStyles(colors), [colors]);
   return (
-    <View style={dayStyles.container}>
-      <View style={dayStyles.header}>
-        <Text style={dayStyles.day}>{day}</Text>
-        <Text style={dayStyles.date}>{date}</Text>
+    <View style={dStyles.container}>
+      <View style={dStyles.header}>
+        <Text style={dStyles.day}>{day}</Text>
+        <Text style={dStyles.date}>{date}</Text>
       </View>
       {sessions.map(s => (
         <SessionCard
           key={s.id}
           session={s}
           overrides={getOverridesForSession(s.id)}
+          colors={colors}
         />
       ))}
     </View>
   );
 }
 
-const dayStyles = StyleSheet.create({
+const createDayStyles = (colors: any) => StyleSheet.create({
   container: { marginBottom: 26 },
   header: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 12, gap: 10 },
-  day: { fontSize: 20, fontWeight: '900', color: '#dde8fb', letterSpacing: -0.3 },
-  date: { fontSize: 13, color: '#3d5068', fontWeight: '600' },
+  day: { fontSize: 20, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.3 },
+  date: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
 });
 
 // ─── Main Screen ────────────────────────────────────────────────────────────
 
 export default function ScheduleScreen() {
-  const { overrides, getOverridesForSession, resetAll } = useApp();
+  const { overrides, getOverridesForSession, resetAll, colors } = useApp();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   // Group sessions by day
   const days = DEFAULT_SCHEDULE.reduce<Record<string, { date: string; sessions: PracticeSession[] }>>((acc, s) => {
@@ -150,7 +155,7 @@ export default function ScheduleScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={['#112060', '#071428']}
+          colors={[colors.heroGrad1, colors.heroGrad2]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
@@ -176,14 +181,14 @@ export default function ScheduleScreen() {
             <Text style={styles.summaryNum}>{DEFAULT_SCHEDULE.length}</Text>
             <Text style={styles.summaryLabel}>Sessions</Text>
           </View>
-          <View style={[styles.summaryCard, totalOverrides > 0 && { borderColor: '#f59e0b40' }]}>
-            <Text style={[styles.summaryNum, { color: totalOverrides > 0 ? '#f59e0b' : '#10b981' }]}>
+          <View style={[styles.summaryCard, totalOverrides > 0 && { borderColor: colors.warning + '40' }]}>
+            <Text style={[styles.summaryNum, { color: totalOverrides > 0 ? colors.warning : colors.success }]}>
               {totalOverrides}
             </Text>
             <Text style={styles.summaryLabel}>Adjustments</Text>
           </View>
-          <View style={[styles.summaryCard, playersAffected > 0 && { borderColor: '#ef444440' }]}>
-            <Text style={[styles.summaryNum, { color: playersAffected > 0 ? '#ef4444' : '#10b981' }]}>
+          <View style={[styles.summaryCard, playersAffected > 0 && { borderColor: colors.danger + '40' }]}>
+            <Text style={[styles.summaryNum, { color: playersAffected > 0 ? colors.danger : colors.success }]}>
               {playersAffected}
             </Text>
             <Text style={styles.summaryLabel}>Players</Text>
@@ -209,6 +214,7 @@ export default function ScheduleScreen() {
             date={date}
             sessions={sessions}
             getOverridesForSession={getOverridesForSession}
+            colors={colors}
           />
         ))}
 
@@ -233,85 +239,85 @@ export default function ScheduleScreen() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#050c18' },
+const createStyles = (colors: any) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
   hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 22, paddingHorizontal: 16 },
   heroRow: { flexDirection: 'row', alignItems: 'center' },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
-  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 28, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
+  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6 },
   resetBtn: {
     backgroundColor: 'rgba(248,113,113,0.15)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
     borderWidth: 1, borderColor: 'rgba(248,113,113,0.3)',
   },
-  resetText: { color: '#f87171', fontSize: 12, fontWeight: '800' },
+  resetText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
   content: { padding: 16 },
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   summaryCard: {
-    flex: 1, backgroundColor: '#08142a', borderRadius: 14, padding: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: '#0f2040',
+    flex: 1, backgroundColor: colors.bgCard, borderRadius: 14, padding: 14, alignItems: 'center',
+    borderWidth: 1, borderColor: colors.borderBase,
   },
-  summaryNum: { fontSize: 26, fontWeight: '900', color: '#c8d8f0', letterSpacing: -0.5 },
-  summaryLabel: { fontSize: 10, color: '#2d4a6e', marginTop: 4, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
+  summaryNum: { fontSize: 26, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
+  summaryLabel: { fontSize: 10, color: colors.textSub, marginTop: 4, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   infoBanner: {
-    flexDirection: 'row', backgroundColor: '#fbbf2410', borderRadius: 13, padding: 14,
-    marginBottom: 20, borderWidth: 1, borderColor: '#fbbf2420', alignItems: 'flex-start', gap: 10,
+    flexDirection: 'row', backgroundColor: colors.warning + '10', borderRadius: 13, padding: 14,
+    marginBottom: 20, borderWidth: 1, borderColor: colors.warning + '20', alignItems: 'flex-start', gap: 10,
   },
   infoIcon: { fontSize: 16, marginTop: 1 },
-  infoText: { fontSize: 13, color: '#7a90b0', lineHeight: 20, flex: 1 },
+  infoText: { fontSize: 13, color: colors.textSub, lineHeight: 20, flex: 1 },
   legendCard: {
-    backgroundColor: '#08142a', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#0f2040', marginBottom: 30,
+    backgroundColor: colors.bgCard, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.borderBase, marginBottom: 30,
   },
-  legendTitle: { fontSize: 10, fontWeight: '900', color: '#2d4a6e', marginBottom: 12, letterSpacing: 1.5, textTransform: 'uppercase' },
+  legendTitle: { fontSize: 10, fontWeight: '900', color: colors.textSub, marginBottom: 12, letterSpacing: 1.5, textTransform: 'uppercase' },
   legendGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { fontSize: 11, color: '#4a6fa5', fontWeight: '700' },
+  legendText: { fontSize: 11, color: colors.textMuted, fontWeight: '700' },
 });
 
-const cardStyles = StyleSheet.create({
+const createCardStyles = (colors: any) => StyleSheet.create({
   container: {
-    backgroundColor: '#0d1826', borderRadius: 16, padding: 16, marginBottom: 10,
-    borderWidth: 1, borderColor: '#1a2840', borderLeftWidth: 4,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
+    backgroundColor: colors.bgCardAlt, borderRadius: 16, padding: 16, marginBottom: 10,
+    borderWidth: 1, borderColor: colors.borderSubtle, borderLeftWidth: 4,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
   },
   header: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
   icon: { fontSize: 22, marginRight: 12, marginTop: 1 },
   headerInfo: { flex: 1 },
-  title: { fontSize: 16, fontWeight: '800', color: '#dde8fb', letterSpacing: 0.1 },
+  title: { fontSize: 16, fontWeight: '800', color: colors.textTitle, letterSpacing: 0.1 },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 },
-  time: { fontSize: 13, color: '#7a90b0', fontWeight: '600' },
-  dot: { color: '#3d5068', fontSize: 10 },
-  duration: { fontSize: 13, color: '#7a90b0', fontWeight: '600' },
+  time: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
+  dot: { color: colors.textMuted, fontSize: 10 },
+  duration: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
   typeBadge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3, marginLeft: 4 },
   typeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   participantLabel: { fontSize: 14 },
-  participantText: { fontSize: 13, color: '#7a90b0', fontWeight: '600' },
-  notes: { fontSize: 12, color: '#3d5068', lineHeight: 20, marginTop: 4 },
+  participantText: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
+  notes: { fontSize: 12, color: colors.textMuted, lineHeight: 20, marginTop: 4 },
   overridesSection: {
-    marginTop: 14, borderTopWidth: 1, borderTopColor: '#1a2840', paddingTop: 12,
+    marginTop: 14, borderTopWidth: 1, borderTopColor: colors.borderSubtle, paddingTop: 12,
   },
-  overridesTitle: { fontSize: 12, fontWeight: '800', color: '#fbbf24', marginBottom: 10, letterSpacing: 0.3 },
+  overridesTitle: { fontSize: 12, fontWeight: '800', color: colors.warning, marginBottom: 10, letterSpacing: 0.3 },
   overrideRow: { marginBottom: 10 },
   overrideHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   overridePlayerBadge: {
-    backgroundColor: '#4f8ef720', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#4f8ef730',
+    backgroundColor: colors.info + '20', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: colors.info + '30',
   },
-  overridePlayerText: { color: '#4f8ef7', fontSize: 11, fontWeight: '800' },
+  overridePlayerText: { color: colors.info, fontSize: 11, fontWeight: '800' },
   overrideScenBadge: {
-    backgroundColor: '#f8717118', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4,
-    borderWidth: 1, borderColor: '#f8717130',
+    backgroundColor: colors.danger + '18', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: colors.danger + '30',
   },
-  overrideScenText: { color: '#f87171', fontSize: 10, fontWeight: '800' },
+  overrideScenText: { color: colors.danger, fontSize: 10, fontWeight: '800' },
   replacementCard: {
-    flexDirection: 'row', backgroundColor: '#080d16', borderRadius: 11, padding: 12,
-    borderWidth: 1, borderColor: '#fbbf2425', gap: 10,
+    flexDirection: 'row', backgroundColor: colors.bgDropdown, borderRadius: 11, padding: 12,
+    borderWidth: 1, borderColor: colors.warning + '25', gap: 10,
   },
   replacementIcon: { fontSize: 20, marginTop: 2 },
-  replacementTitle: { fontSize: 14, fontWeight: '800', color: '#fbbf24' },
-  replacementMeta: { fontSize: 12, color: '#7a90b0', marginTop: 2 },
-  replacementNotes: { fontSize: 12, color: '#3d5068', marginTop: 4, lineHeight: 18 },
+  replacementTitle: { fontSize: 14, fontWeight: '800', color: colors.warning },
+  replacementMeta: { fontSize: 12, color: colors.textSub, marginTop: 2 },
+  replacementNotes: { fontSize: 12, color: colors.textMuted, marginTop: 4, lineHeight: 18 },
 });

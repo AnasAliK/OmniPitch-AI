@@ -34,9 +34,10 @@ const statusColors: Record<string, string> = {
 
 // ─── Player Row ─────────────────────────────────────────────────────────────
 
-function PlayerRow({ player, onPress, isSelected, hasIntervention }: {
-  player: Player; onPress: () => void; isSelected: boolean; hasIntervention: boolean;
+function PlayerRow({ player, onPress, isSelected, hasIntervention, colors }: {
+  player: Player; onPress: () => void; isSelected: boolean; hasIntervention: boolean; colors: any;
 }) {
+  const rStyles = useMemo(() => createRowStyles(colors), [colors]);
   const analysis = analyzePlayer(player);
   const posColor = getPositionColor(player.position);
   const hasProblem = analysis.type !== 'none';
@@ -44,43 +45,43 @@ function PlayerRow({ player, onPress, isSelected, hasIntervention }: {
   const statusLabel = hasIntervention ? 'MOD' : hasProblem ? (analysis.severity === 'critical' ? 'CRIT' : 'ALRT') : 'OK';
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={[rowStyles.container, isSelected ? rowStyles.selected : null]}>
-      {isSelected && <View style={[rowStyles.selectedBar, { backgroundColor: statusCol }]} />}
-      <View style={[rowStyles.avatar, { backgroundColor: player.avatarColor }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={[rStyles.container, isSelected ? rStyles.selected : null]}>
+      {isSelected && <View style={[rStyles.selectedBar, { backgroundColor: statusCol }]} />}
+      <View style={[rStyles.avatar, { backgroundColor: player.avatarColor }]}>
         {player.imageUrl ? (
           <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         ) : (
-          <Text style={rowStyles.avatarText}>{player.avatarInitials}</Text>
+          <Text style={rStyles.avatarText}>{player.avatarInitials}</Text>
         )}
       </View>
-      <View style={rowStyles.infoContainer}>
-        <Text style={rowStyles.name}>{player.shortName}</Text>
-        <View style={rowStyles.metaRow}>
-          <View style={[rowStyles.posBadge, { borderColor: posColor + '60' }]}>
-            <Text style={[rowStyles.posText, { color: posColor }]}>{player.position}</Text>
+      <View style={rStyles.infoContainer}>
+        <Text style={rStyles.name}>{player.shortName}</Text>
+        <View style={rStyles.metaRow}>
+          <View style={[rStyles.posBadge, { borderColor: posColor + '60' }]}>
+            <Text style={[rStyles.posText, { color: posColor }]}>{player.position}</Text>
           </View>
-          <Text style={rowStyles.number}>#{player.number}</Text>
+          <Text style={rStyles.number}>#{player.number}</Text>
         </View>
       </View>
-      <View style={[rowStyles.statusChip, { backgroundColor: statusCol + '18', borderColor: statusCol + '50' }]}>
-        <View style={[rowStyles.statusDot, { backgroundColor: statusCol }]} />
-        <Text style={[rowStyles.statusText, { color: statusCol }]}>{statusLabel}</Text>
+      <View style={[rStyles.statusChip, { backgroundColor: statusCol + '18', borderColor: statusCol + '50' }]}>
+        <View style={[rStyles.statusDot, { backgroundColor: statusCol }]} />
+        <Text style={[rStyles.statusText, { color: statusCol }]}>{statusLabel}</Text>
       </View>
-      <View style={rowStyles.chevron}>
-        <Text style={{ color: '#4a6fa5', fontSize: 12 }}>{isSelected ? '▲' : '▼'}</Text>
+      <View style={rStyles.chevron}>
+        <Text style={{ color: colors.textMuted, fontSize: 12 }}>{isSelected ? '▲' : '▼'}</Text>
       </View>
     </TouchableOpacity>
   );
 }
 
-const rowStyles = StyleSheet.create({
+const createRowStyles = (colors: any) => StyleSheet.create({
   container: {
     width: '100%', flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12,
-    borderRadius: 14, backgroundColor: '#0a1628',
-    borderWidth: 1, borderColor: '#142035',
+    borderRadius: 14, backgroundColor: colors.bgCardAlt,
+    borderWidth: 1, borderColor: colors.borderSubtle,
   },
   selected: {
-    backgroundColor: '#0d2242', borderColor: '#1e3d70',
+    backgroundColor: colors.bgDropdown, borderColor: colors.borderFocus,
   },
   selectedBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4 },
   avatar: {
@@ -90,11 +91,11 @@ const rowStyles = StyleSheet.create({
   },
   avatarText: { fontSize: 16, fontWeight: '900', color: '#fff' },
   infoContainer: { flex: 1, justifyContent: 'center' },
-  name: { fontSize: 15, fontWeight: '800', color: '#e2eeff', letterSpacing: 0.1, marginBottom: 4 },
+  name: { fontSize: 15, fontWeight: '800', color: colors.textTitle, letterSpacing: 0.1, marginBottom: 4 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   posBadge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1 },
   posText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
-  number: { fontSize: 11, color: '#2d4a6e', fontWeight: '700' },
+  number: { fontSize: 11, color: colors.textSub, fontWeight: '700' },
   statusChip: {
     flexDirection: 'row', alignItems: 'center', borderRadius: 8,
     paddingHorizontal: 8, paddingVertical: 5, gap: 5, borderWidth: 1, marginRight: 6,
@@ -104,23 +105,24 @@ const rowStyles = StyleSheet.create({
   chevron: { paddingLeft: 4, paddingRight: 4, width: 20, alignItems: 'center' },
 });
 
-function StatCard({ value, label, highlight }: { value: string; label: string; highlight?: boolean }) {
+function StatCard({ value, label, highlight, colors }: { value: string; label: string; highlight?: boolean; colors: any }) {
+  const sStyles = useMemo(() => createStatStyles(colors), [colors]);
   return (
-    <View style={statStyles.card}>
-      <Text style={[statStyles.value, highlight && { color: '#ef4444' }]}>{value}</Text>
-      <Text style={statStyles.label}>{label}</Text>
+    <View style={sStyles.card}>
+      <Text style={[sStyles.value, highlight && { color: colors.danger }]}>{value}</Text>
+      <Text style={sStyles.label}>{label}</Text>
     </View>
   );
 }
 
-const statStyles = StyleSheet.create({
+const createStatStyles = (colors: any) => StyleSheet.create({
   card: {
-    backgroundColor: '#080d16', borderRadius: 12, padding: 13,
+    backgroundColor: colors.bgCardAlt, borderRadius: 12, padding: 13,
     alignItems: 'center', flex: 1, marginHorizontal: 3,
-    borderWidth: 1, borderColor: '#1a2840',
+    borderWidth: 1, borderColor: colors.borderSubtle,
   },
-  value: { fontSize: 19, fontWeight: '900', color: '#dde8fb', letterSpacing: -0.5 },
-  label: { fontSize: 9, color: '#3d5068', marginTop: 4, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 },
+  value: { fontSize: 19, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
+  label: { fontSize: 9, color: colors.textSub, marginTop: 4, textAlign: 'center', fontWeight: '700', letterSpacing: 0.5 },
 });
 
 // ─── Main Dashboard ─────────────────────────────────────────────────────────
@@ -292,6 +294,7 @@ export default function OmniPitchDashboard() {
                         player={p}
                         isSelected={isSel}
                         hasIntervention={hasInt}
+                        colors={colors}
                         onPress={() => {
                           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                           if (isSel) {
@@ -313,19 +316,19 @@ export default function OmniPitchDashboard() {
                           </View>
 
                           <View style={styles.statsRow}>
-                            <StatCard value={String(pStats.goals)} label="Goals" highlight={pAnalysis.category === 'Technical'} />
-                            <StatCard value={String(pStats.xG)} label="xG" />
-                            <StatCard value={String(pStats.assists)} label="Assists" />
-                            <StatCard value={String(pStats.xA)} label="xA" />
+                            <StatCard value={String(pStats.goals)} label="Goals" highlight={pAnalysis.category === 'Technical'} colors={colors} />
+                            <StatCard value={String(pStats.xG)} label="xG" colors={colors} />
+                            <StatCard value={String(pStats.assists)} label="Assists" colors={colors} />
+                            <StatCard value={String(pStats.xA)} label="xA" colors={colors} />
                           </View>
                           <View style={[styles.statsRow, { marginTop: 6 }]}>
-                            <StatCard value={`${pStats.minutesPlayed}'`} label="Minutes" highlight={pAnalysis.category === 'Physical'} />
-                            <StatCard value={`${pDuelRate}%`} label="Duels" />
-                            <StatCard value={`${pStats.passingAccuracy}%`} label="Pass %" />
+                            <StatCard value={`${pStats.minutesPlayed}'`} label="Minutes" highlight={pAnalysis.category === 'Physical'} colors={colors} />
+                            <StatCard value={`${pDuelRate}%`} label="Duels" colors={colors} />
+                            <StatCard value={`${pStats.passingAccuracy}%`} label="Pass %" colors={colors} />
                             {pStats.savePercentage !== undefined ? (
-                              <StatCard value={`${pStats.savePercentage}%`} label="Save %" highlight={pAnalysis.category === 'Tactical'} />
+                              <StatCard value={`${pStats.savePercentage}%`} label="Save %" highlight={pAnalysis.category === 'Tactical'} colors={colors} />
                             ) : (
-                              <StatCard value={`${pConvRate}%`} label="Conv %" highlight={pAnalysis.category === 'Technical'} />
+                              <StatCard value={`${pConvRate}%`} label="Conv %" highlight={pAnalysis.category === 'Technical'} colors={colors} />
                             )}
                           </View>
 
