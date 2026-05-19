@@ -150,7 +150,8 @@ Result: ✓ Database updated
 
 // ─── Trace Step Component ───────────────────────────────────────────────────
 
-function TraceStep({ step, isLast }: { step: ReturnType<typeof buildTraceSteps>[0]; isLast: boolean }) {
+function TraceStep({ step, isLast, colors }: { step: ReturnType<typeof buildTraceSteps>[0]; isLast: boolean; colors: any }) {
+  const tStyles = React.useMemo(() => createTraceStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(false);
 
   const toggle = () => {
@@ -159,25 +160,25 @@ function TraceStep({ step, isLast }: { step: ReturnType<typeof buildTraceSteps>[
   };
 
   return (
-    <View style={traceStyles.stepContainer}>
-      <View style={traceStyles.timelineCol}>
-        <View style={[traceStyles.dot, { backgroundColor: step.color }]}>
-          <Text style={traceStyles.dotEmoji}>{step.icon}</Text>
+    <View style={tStyles.stepContainer}>
+      <View style={tStyles.timelineCol}>
+        <View style={[tStyles.dot, { backgroundColor: step.color }]}>
+          <Text style={tStyles.dotEmoji}>{step.icon}</Text>
         </View>
-        {!isLast && <View style={[traceStyles.line, { backgroundColor: step.color + '40' }]} />}
+        {!isLast && <View style={[tStyles.line, { backgroundColor: step.color + '40' }]} />}
       </View>
-      <TouchableOpacity style={traceStyles.contentCard} onPress={toggle} activeOpacity={0.7}>
-        <View style={traceStyles.cardHeader}>
+      <TouchableOpacity style={tStyles.contentCard} onPress={toggle} activeOpacity={0.7}>
+        <View style={tStyles.cardHeader}>
           <View>
-            <Text style={[traceStyles.phase, { color: step.color }]}>{step.phase}</Text>
-            <Text style={traceStyles.stepTitle}>{step.title}</Text>
-            <Text style={traceStyles.stepSub}>{step.subtitle}</Text>
+            <Text style={[tStyles.phase, { color: step.color }]}>{step.phase}</Text>
+            <Text style={tStyles.stepTitle}>{step.title}</Text>
+            <Text style={tStyles.stepSub}>{step.subtitle}</Text>
           </View>
-          <Text style={traceStyles.expandIcon}>{expanded ? '▲' : '▼'}</Text>
+          <Text style={tStyles.expandIcon}>{expanded ? '▲' : '▼'}</Text>
         </View>
         {expanded && (
-          <View style={traceStyles.codeBlock}>
-            <Text style={traceStyles.codeText}>{step.content}</Text>
+          <View style={tStyles.codeBlock}>
+            <Text style={tStyles.codeText}>{step.content}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -188,7 +189,8 @@ function TraceStep({ step, isLast }: { step: ReturnType<typeof buildTraceSteps>[
 // ─── Main Screen ────────────────────────────────────────────────────────────
 
 export default function AgentTraceScreen() {
-  const { selectedTeam } = useApp();
+  const { selectedTeam, colors } = useApp();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // If a team switch happened and the old selectedId isn't in the new team, default to the first player
@@ -209,7 +211,7 @@ export default function AgentTraceScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={['#112060', '#071428']}
+          colors={[colors.heroGrad1, colors.heroGrad2]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
@@ -250,8 +252,8 @@ export default function AgentTraceScreen() {
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.sumLabel}>Scenario</Text>
-            <View style={[styles.scenBadge, { backgroundColor: analysis.hasIssue ? '#f59e0b20' : '#10b98120' }]}>
-              <Text style={[styles.scenText, { color: analysis.hasIssue ? '#fbbf24' : '#10b981' }]}>
+            <View style={[styles.scenBadge, { backgroundColor: analysis.hasIssue ? colors.warning + '20' : colors.success + '20' }]}>
+              <Text style={[styles.scenText, { color: analysis.hasIssue ? colors.warning : colors.success }]}>
                 {analysis.title}
               </Text>
             </View>
@@ -259,7 +261,7 @@ export default function AgentTraceScreen() {
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.sumLabel}>Confidence</Text>
-            <Text style={[styles.sumValue, { color: analysis.confidence >= 80 ? '#10b981' : '#f59e0b' }]}>
+            <Text style={[styles.sumValue, { color: analysis.confidence >= 80 ? colors.success : colors.warning }]}>
               {analysis.confidence > 0 ? `${analysis.confidence}%` : 'N/A'}
             </Text>
           </View>
@@ -269,7 +271,7 @@ export default function AgentTraceScreen() {
         <Text style={styles.sectionLabel}>Execution Timeline</Text>
         <Text style={styles.hint}>Tap each step to expand</Text>
         {steps.map((step, i) => (
-          <TraceStep key={step.id + selectedId} step={step} isLast={i === steps.length - 1} />
+          <TraceStep key={step.id + selectedId} step={step} isLast={i === steps.length - 1} colors={colors} />
         ))}
 
         </View>
@@ -280,66 +282,66 @@ export default function AgentTraceScreen() {
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#050c18' },
+const createStyles = (colors: any) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
   hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 22, paddingHorizontal: 16 },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: '#3b6cc0', letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: '#e8f0ff', letterSpacing: -0.5 },
-  heroSub: { fontSize: 13, color: '#4a6fa5', marginTop: 6 },
+  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { fontSize: 28, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
+  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6 },
   content: { padding: 16 },
   sectionLabel: {
-    fontSize: 10, fontWeight: '900', color: '#2d4a6e',
+    fontSize: 10, fontWeight: '900', color: colors.textSub,
     marginBottom: 8, letterSpacing: 1.5, textTransform: 'uppercase',
   },
-  hint: { fontSize: 12, color: '#1a2d48', marginBottom: 16 },
+  hint: { fontSize: 12, color: colors.textMuted, marginBottom: 16 },
   selectorScroll: { marginBottom: 20, marginHorizontal: -4 },
   selectorChip: {
-    backgroundColor: '#08142a', borderRadius: 11, paddingHorizontal: 14, paddingVertical: 9,
-    marginHorizontal: 4, borderWidth: 1, borderColor: '#0f2040',
+    backgroundColor: colors.bgCard, borderRadius: 11, paddingHorizontal: 14, paddingVertical: 9,
+    marginHorizontal: 4, borderWidth: 1, borderColor: colors.borderBase,
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  selectorChipActive: { backgroundColor: '#1e4db7', borderColor: '#3b82f6' },
-  selectorText: { fontSize: 13, color: '#2d4a6e', fontWeight: '700' },
-  selectorTextActive: { color: '#fff' },
-  selectorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#f87171' },
+  selectorChipActive: { backgroundColor: colors.primary, borderColor: colors.borderFocus },
+  selectorText: { fontSize: 13, color: colors.textSub, fontWeight: '700' },
+  selectorTextActive: { color: colors.textInverse },
+  selectorDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.danger },
   summaryCard: {
-    backgroundColor: '#08142a', borderRadius: 16, padding: 16, marginBottom: 24,
-    borderWidth: 1, borderColor: '#0f2040',
+    backgroundColor: colors.bgCard, borderRadius: 16, padding: 16, marginBottom: 24,
+    borderWidth: 1, borderColor: colors.borderBase,
   },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11 },
-  divider: { height: 1, backgroundColor: '#0f2040' },
-  sumLabel: { fontSize: 13, color: '#2d4a6e', fontWeight: '600' },
-  sumValue: { fontSize: 14, color: '#c8d8f0', fontWeight: '800' },
+  divider: { height: 1, backgroundColor: colors.borderBase },
+  sumLabel: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
+  sumValue: { fontSize: 14, color: colors.textTitle, fontWeight: '800' },
   scenBadge: { borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: 'transparent' },
   scenText: { fontSize: 12, fontWeight: '800' },
 });
 
-const traceStyles = StyleSheet.create({
+const createTraceStyles = (colors: any) => StyleSheet.create({
   stepContainer: { flexDirection: 'row', marginBottom: 0 },
   timelineCol: { width: 46, alignItems: 'center' },
   dot: {
     width: 38, height: 38, borderRadius: 12, justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 2,
   },
   dotEmoji: { fontSize: 17 },
   line: { width: 2, flex: 1, marginVertical: 4, borderRadius: 1 },
   contentCard: {
-    flex: 1, backgroundColor: '#0d1826', borderRadius: 14, padding: 14, marginLeft: 10, marginBottom: 14,
-    borderWidth: 1, borderColor: '#1a2840',
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
+    flex: 1, backgroundColor: colors.bgCardAlt, borderRadius: 14, padding: 14, marginLeft: 10, marginBottom: 14,
+    borderWidth: 1, borderColor: colors.borderSubtle,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 2,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   phase: { fontSize: 9, fontWeight: '900', letterSpacing: 1.5, marginBottom: 2 },
-  stepTitle: { fontSize: 16, fontWeight: '900', color: '#dde8fb', letterSpacing: -0.3 },
-  stepSub: { fontSize: 11, color: '#3d5068', marginTop: 3, fontWeight: '600' },
-  expandIcon: { fontSize: 11, color: '#3d5068', marginTop: 4 },
+  stepTitle: { fontSize: 16, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.3 },
+  stepSub: { fontSize: 11, color: colors.textSub, marginTop: 3, fontWeight: '600' },
+  expandIcon: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
   codeBlock: {
-    backgroundColor: '#080d16', borderRadius: 10, padding: 13, marginTop: 12,
-    borderWidth: 1, borderColor: '#1a2840',
+    backgroundColor: colors.bgDropdown, borderRadius: 10, padding: 13, marginTop: 12,
+    borderWidth: 1, borderColor: colors.borderSubtle,
   },
   codeText: {
-    fontSize: 11, color: '#7a90b0', lineHeight: 19,
+    fontSize: 11, color: colors.textSub, lineHeight: 19,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });
