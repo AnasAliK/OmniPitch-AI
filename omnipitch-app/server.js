@@ -18,11 +18,11 @@ function getEmojiFlag(ccode) {
 // Fetch and scrape a specific team by ID
 async function scrapeTeam(teamId, teamName) {
   console.log(`Starting Playwright scraping for ${teamName} (ID: ${teamId})...`);
-  const browser = await chromium.launch({ 
+  const browser = await chromium.launch({
     headless: true,
-    channel: 'msedge' 
+    channel: 'msedge'
   });
-  
+
   try {
     const context = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
@@ -44,61 +44,61 @@ async function scrapeTeam(teamId, teamName) {
     const nextData = JSON.parse(nextDataStr);
     const fallbackKey = `team-${teamId}`;
     const teamData = nextData.props?.pageProps?.fallback?.[fallbackKey];
-    
+
     if (teamData && teamData.squad && teamData.squad.squad) {
       const squadGroups = teamData.squad.squad;
       const players = [];
 
       squadGroups.forEach(group => {
         if (group.title === 'coach') return;
-        
-        group.members.forEach(m => {
-           let pos = 'CM';
-           if (group.title === 'keepers') pos = 'GK';
-           else if (group.title === 'defenders') pos = m.positionIdsDesc?.includes('B') ? m.positionIdsDesc : 'CB';
-           else if (group.title === 'midfielders') pos = m.positionIdsDesc?.includes('M') ? m.positionIdsDesc : 'CM';
-           else if (group.title === 'attackers') pos = m.positionIdsDesc?.includes('W') ? m.positionIdsDesc : 'ST';
-           if (!pos || pos.length > 3) pos = group.title === 'attackers' ? 'ST' : 'CM';
 
-           const matchCount = 5;
-           const minutes = pos === 'GK' ? 450 : Math.floor(Math.random() * 400 + 50);
-           const isAttacker = pos === 'ST' || pos === 'RW' || pos === 'LW';
-           const isDefender = pos === 'CB' || pos === 'RB' || pos === 'LB';
-           
-           const goals = isAttacker ? Math.floor(Math.random() * 5) : (isDefender ? 0 : Math.floor(Math.random() * 2));
-           
-           players.push({
-             id: String(m.id),
-             name: m.name,
-             shortName: m.name.split(' ').pop(),
-             number: m.shirtNumber || Math.floor(Math.random() * 99) + 1,
-             position: pos,
-             nationality: getEmojiFlag(m.ccode) || m.cname,
-             age: m.age || 25,
-             avatarInitials: m.name.substring(0, 2).toUpperCase(),
-             avatarColor: group.title === 'keepers' ? '#f59e0b' : (isDefender ? '#3b82f6' : (isAttacker ? '#ef4444' : '#10b981')),
-             status: 'Active',
-             stats: {
-                matchCount,
-                minutesPlayed: minutes,
-                goals: goals,
-                xG: +(goals + (Math.random() * 1.5 - 0.5)).toFixed(2),
-                xA: +(Math.random() * 2).toFixed(2),
-                assists: Math.floor(Math.random() * 3),
-                shotsTotal: isAttacker ? Math.floor(Math.random() * 15 + 5) : Math.floor(Math.random() * 5),
-                shotsOnTarget: isAttacker ? Math.floor(Math.random() * 8 + 2) : Math.floor(Math.random() * 2),
-                groundDuelsWon: Math.floor(Math.random() * 20 + 5),
-                groundDuelsTotal: Math.floor(Math.random() * 40 + 15),
-                passingAccuracy: Math.floor(Math.random() * 20 + 75),
-                heatmapCoverage: Math.random() > 0.7 ? 'Contracted' : (Math.random() > 0.5 ? 'Wide' : 'Normal'),
-                sprintDistance: Math.random() > 0.7 ? 'Low' : (Math.random() > 0.5 ? 'High' : 'Normal'),
-                ...(pos === 'GK' && {
-                   savePercentage: Math.floor(Math.random() * 40 + 50),
-                   goalsConceded: Math.floor(Math.random() * 8),
-                   counterGoalsConceded: Math.floor(Math.random() * 3),
-                })
-             }
-           });
+        group.members.forEach(m => {
+          let pos = 'CM';
+          if (group.title === 'keepers') pos = 'GK';
+          else if (group.title === 'defenders') pos = m.positionIdsDesc?.includes('B') ? m.positionIdsDesc : 'CB';
+          else if (group.title === 'midfielders') pos = m.positionIdsDesc?.includes('M') ? m.positionIdsDesc : 'CM';
+          else if (group.title === 'attackers') pos = m.positionIdsDesc?.includes('W') ? m.positionIdsDesc : 'ST';
+          if (!pos || pos.length > 3) pos = group.title === 'attackers' ? 'ST' : 'CM';
+
+          const matchCount = 5;
+          const minutes = pos === 'GK' ? 450 : Math.floor(Math.random() * 400 + 50);
+          const isAttacker = pos === 'ST' || pos === 'RW' || pos === 'LW';
+          const isDefender = pos === 'CB' || pos === 'RB' || pos === 'LB';
+
+          const goals = isAttacker ? Math.floor(Math.random() * 5) : (isDefender ? 0 : Math.floor(Math.random() * 2));
+
+          players.push({
+            id: String(m.id),
+            name: m.name,
+            shortName: m.name.split(' ').pop(),
+            number: m.shirtNumber || Math.floor(Math.random() * 99) + 1,
+            position: pos,
+            nationality: getEmojiFlag(m.ccode) || m.cname,
+            age: m.age || 25,
+            avatarInitials: m.name.substring(0, 2).toUpperCase(),
+            avatarColor: group.title === 'keepers' ? '#f59e0b' : (isDefender ? '#3b82f6' : (isAttacker ? '#ef4444' : '#10b981')),
+            status: 'Active',
+            stats: {
+              matchCount,
+              minutesPlayed: minutes,
+              goals: goals,
+              xG: +(goals + (Math.random() * 1.5 - 0.5)).toFixed(2),
+              xA: +(Math.random() * 2).toFixed(2),
+              assists: Math.floor(Math.random() * 3),
+              shotsTotal: isAttacker ? Math.floor(Math.random() * 15 + 5) : Math.floor(Math.random() * 5),
+              shotsOnTarget: isAttacker ? Math.floor(Math.random() * 8 + 2) : Math.floor(Math.random() * 2),
+              groundDuelsWon: Math.floor(Math.random() * 20 + 5),
+              groundDuelsTotal: Math.floor(Math.random() * 40 + 15),
+              passingAccuracy: Math.floor(Math.random() * 20 + 75),
+              heatmapCoverage: Math.random() > 0.7 ? 'Contracted' : (Math.random() > 0.5 ? 'Wide' : 'Normal'),
+              sprintDistance: Math.random() > 0.7 ? 'Low' : (Math.random() > 0.5 ? 'High' : 'Normal'),
+              ...(pos === 'GK' && {
+                savePercentage: Math.floor(Math.random() * 40 + 50),
+                goalsConceded: Math.floor(Math.random() * 8),
+                counterGoalsConceded: Math.floor(Math.random() * 3),
+              })
+            }
+          });
         });
       });
 
@@ -132,12 +132,29 @@ app.get('/api/scrape/:teamId', async (req, res) => {
     const teamsMap = {
       '8456': 'Manchester City',
       '9825': 'Arsenal',
-      '8650': 'Liverpool'
+      '8650': 'Liverpool',
+      '8455': 'Chelsea',
+      '10260': 'Manchester United',
+      '8586': 'Tottenham Hotspur',
+      '10252': 'Aston Villa',
+      '10261': 'Newcastle United',
+      '10204': 'Brighton & Hove Albion',
+      '8654': 'West Ham United',
+      '8602': 'Wolverhampton Wanderers',
+      '9879': 'Fulham',
+      '9826': 'Crystal Palace',
+      '8678': 'AFC Bournemouth',
+      '8668': 'Everton',
+      '9937': 'Brentford',
+      '10203': 'Nottingham Forest',
+      '8197': 'Leicester City',
+      '9902': 'Ipswich Town',
+      '8460': 'Southampton'
     };
-    
+
     const teamName = teamsMap[teamId] || 'Unknown Team';
     const teamData = await scrapeTeam(teamId, teamName);
-    
+
     res.json(teamData);
   } catch (error) {
     console.error("Scraping error:", error);
@@ -177,11 +194,11 @@ Generate this exact JSON structure (NOT an array, just the object):
 
 Player Data:
 ${JSON.stringify({
-  id: player.id,
-  name: player.name,
-  position: player.position,
-  stats: player.stats
-}, null, 2)}`;
+      id: player.id,
+      name: player.name,
+      position: player.position,
+      stats: player.stats
+    }, null, 2)}`;
 
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
@@ -236,13 +253,13 @@ Generate this exact JSON structure:
 
 Team Players Data:
 ${JSON.stringify(players.map(p => ({
-  id: p.id,
-  name: p.name,
-  avatarInitials: p.avatarInitials,
-  avatarColor: p.avatarColor,
-  position: p.position,
-  stats: p.stats
-})), null, 2)}`;
+      id: p.id,
+      name: p.name,
+      avatarInitials: p.avatarInitials,
+      avatarColor: p.avatarColor,
+      position: p.position,
+      stats: p.stats
+    })), null, 2)}`;
 
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
