@@ -175,61 +175,61 @@ export default function ScheduleScreen() {
 
         <View style={styles.content}>
 
-        {/* Summary Bar */}
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryNum}>{DEFAULT_SCHEDULE.length}</Text>
-            <Text style={styles.summaryLabel}>Sessions</Text>
+          {/* Summary Bar */}
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryNum}>{DEFAULT_SCHEDULE.length}</Text>
+              <Text style={styles.summaryLabel}>Sessions</Text>
+            </View>
+            <View style={[styles.summaryCard, totalOverrides > 0 && { borderColor: colors.warning + '40' }]}>
+              <Text style={[styles.summaryNum, { color: totalOverrides > 0 ? colors.warning : colors.success }]}>
+                {totalOverrides}
+              </Text>
+              <Text style={styles.summaryLabel}>Adjustments</Text>
+            </View>
+            <View style={[styles.summaryCard, playersAffected > 0 && { borderColor: colors.danger + '40' }]}>
+              <Text style={[styles.summaryNum, { color: playersAffected > 0 ? colors.danger : colors.success }]}>
+                {playersAffected}
+              </Text>
+              <Text style={styles.summaryLabel}>Players</Text>
+            </View>
           </View>
-          <View style={[styles.summaryCard, totalOverrides > 0 && { borderColor: colors.warning + '40' }]}>
-            <Text style={[styles.summaryNum, { color: totalOverrides > 0 ? colors.warning : colors.success }]}>
-              {totalOverrides}
-            </Text>
-            <Text style={styles.summaryLabel}>Adjustments</Text>
-          </View>
-          <View style={[styles.summaryCard, playersAffected > 0 && { borderColor: colors.danger + '40' }]}>
-            <Text style={[styles.summaryNum, { color: playersAffected > 0 ? colors.danger : colors.success }]}>
-              {playersAffected}
-            </Text>
-            <Text style={styles.summaryLabel}>Players</Text>
-          </View>
-        </View>
 
-        {/* Info banner */}
-        {totalOverrides > 0 && (
-          <View style={styles.infoBanner}>
-            <Text style={styles.infoIcon}>ℹ️</Text>
-            <Text style={styles.infoText}>
-              {playersAffected} player{playersAffected > 1 ? 's have' : ' has'} modified schedules.
-              Adjustments are shown inline below each affected session.
-            </Text>
-          </View>
-        )}
+          {/* Info banner */}
+          {totalOverrides > 0 && (
+            <View style={styles.infoBanner}>
+              <Text style={styles.infoIcon}>ℹ️</Text>
+              <Text style={styles.infoText}>
+                {playersAffected} player{playersAffected > 1 ? 's have' : ' has'} modified schedules.
+                Adjustments are shown inline below each affected session.
+              </Text>
+            </View>
+          )}
 
-        {/* Schedule */}
-        {Object.entries(days).map(([day, { date, sessions }]) => (
-          <DayGroup
-            key={day}
-            day={day}
-            date={date}
-            sessions={sessions}
-            getOverridesForSession={getOverridesForSession}
-            colors={colors}
-          />
-        ))}
+          {/* Schedule */}
+          {Object.entries(days).map(([day, { date, sessions }]) => (
+            <DayGroup
+              key={day}
+              day={day}
+              date={date}
+              sessions={sessions}
+              getOverridesForSession={getOverridesForSession}
+              colors={colors}
+            />
+          ))}
 
-        {/* Legend */}
-        <View style={styles.legendCard}>
-          <Text style={styles.legendTitle}>Session Types</Text>
-          <View style={styles.legendGrid}>
-            {Object.entries(typeLabels).map(([key, label]) => (
-              <View key={key} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: typeColors[key] }]} />
-                <Text style={styles.legendText}>{label}</Text>
-              </View>
-            ))}
+          {/* Legend */}
+          <View style={styles.legendCard}>
+            <Text style={styles.legendTitle}>Session Types</Text>
+            <View style={styles.legendGrid}>
+              {Object.entries(typeLabels).map(([key, label]) => (
+                <View key={key} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: typeColors[key] }]} />
+                  <Text style={styles.legendText}>{label}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
 
         </View>
       </ScrollView>
