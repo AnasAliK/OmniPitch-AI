@@ -97,10 +97,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    // Trigger initial scrape on app start
-    switchTeam(TEAMS[0].id);
-  }, [switchTeam]);
+  // NOTE: Initial switchTeam is now triggered by the dashboard component
+  // after the welcome modal is dismissed (via dataFetchReady flag).
+  // This ensures the Welcome → Data Load → Sync modal sequence is correct.
 
   const applyIntervention = useCallback((player: Player) => {
     const analysis = analyzePlayer(player);
@@ -173,7 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
       if (response.ok) {
         const analysis = await response.json();
-        setCachedAnalysis((prev: any) => ({ ...prev, [player.id]: analysis }));
+        const { getCachedAnalysis, setCachedAnalysis } = require('@/data/team');
+        setCachedAnalysis({ ...getCachedAnalysis(), [player.id]: analysis });
         return analysis as AnalysisResult;
       }
     } catch (e) {

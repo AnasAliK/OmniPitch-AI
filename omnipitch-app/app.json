@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "omnipitchapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -18,8 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.asim1_23.omnipitchapp"
     },
     "web": {
       "output": "static",
@@ -46,6 +45,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "50d0f86b-c065-493b-bffd-4be459819505"
+      }
+    },
+    "owner": "asim1_23"
   }
 }

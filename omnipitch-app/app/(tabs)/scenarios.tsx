@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   LayoutAnimation,
   UIManager,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getCategoryColor, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
 import { useApp } from '@/context/AppContext';
 import { Image } from 'react-native';
+import { SoccerLoader } from '@/components/SoccerLoader';
+import { PageHeader } from '@/components/SharedUI';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -191,17 +191,18 @@ export default function ScenariosScreen() {
   const totalClear = selectedTeam.players.length - totalFlagged;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={[colors.heroGrad1, colors.heroGrad2]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <Text style={styles.heroEyebrow}>⚡  SCENARIO ENGINE</Text>
-          <Text style={styles.heroTitle}>Scenarios</Text>
-          <Text style={styles.heroSub}>Auto-detected from performance baselines</Text>
-        </LinearGradient>
+        <PageHeader
+          kicker="⚡  SCENARIO ENGINE"
+          title="Scenarios"
+          subtitle="Auto-detected from performance baselines"
+          stats={[
+            { value: totalClear, label: 'Clear', color: '#10b981' },
+            { value: totalFlagged, label: 'Flagged', color: totalFlagged > 0 ? '#ef4444' : '#10b981', pulse: totalFlagged > 0 },
+            { value: scenarios.length, label: 'Categories', color: '#3b82f6' },
+          ]}
+        />
 
         <View style={styles.content}>
 
@@ -228,7 +229,7 @@ export default function ScenariosScreen() {
           disabled={isGenerating}
         >
           {isGenerating ? (
-            <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+            <SoccerLoader size={20} text="" />
           ) : (
             <Text style={{ fontSize: 18, marginRight: 8 }}>🧠</Text>
           )}
@@ -279,10 +280,6 @@ export default function ScenariosScreen() {
 const createStyles = (colors: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
-  hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 24, paddingHorizontal: 16 },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
-  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6 },
   content: { padding: 16 },
   healthRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   healthCard: {

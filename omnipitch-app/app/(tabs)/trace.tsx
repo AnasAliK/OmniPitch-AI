@@ -10,9 +10,9 @@ import {
   UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { TEAMS, analyzePlayer, getPositionColor, getCategoryColor, type Player, type AnalysisResult } from '@/data/team';
 import { useApp } from '@/context/AppContext';
+import { PageHeader, SelectorPill } from '@/components/SharedUI';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -208,37 +208,34 @@ export default function AgentTraceScreen() {
   const allPlayers = selectedTeam.players;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={[colors.heroGrad1, colors.heroGrad2]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <Text style={styles.heroEyebrow}>🧠  OODA LOOP</Text>
-          <Text style={styles.heroTitle}>Agent Trace</Text>
-          <Text style={styles.heroSub}>Dynamic Performance Analysis</Text>
-        </LinearGradient>
+        <PageHeader
+          kicker="🧠  OODA LOOP"
+          title="Agent Trace"
+          subtitle="Dynamic Performance Analysis"
+          stats={[
+            { value: flaggedPlayers.length, label: 'Flagged', color: flaggedPlayers.length > 0 ? '#ef4444' : '#10b981', pulse: flaggedPlayers.length > 0 },
+            { value: allPlayers.length, label: 'Players', color: '#3b82f6' },
+          ]}
+        />
 
         <View style={styles.content}>
 
         {/* Player Selector */}
         <Text style={styles.sectionLabel}>Select Player</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectorScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectorScroll} contentContainerStyle={{ paddingHorizontal: 4, gap: 6 }}>
           {allPlayers.map(p => {
             const a = analyzePlayer(p);
             const isSelected = p.id === selectedId;
             return (
-              <TouchableOpacity
+              <SelectorPill
                 key={p.id}
-                style={[styles.selectorChip, isSelected && styles.selectorChipActive]}
+                label={a.hasIssue ? `${p.shortName} ⚠️` : p.shortName}
+                isActive={isSelected}
                 onPress={() => setSelectedId(p.id)}
-              >
-                <Text style={[styles.selectorText, isSelected && styles.selectorTextActive]}>
-                  {p.shortName}
-                </Text>
-                {a.hasIssue && <View style={styles.selectorDot} />}
-              </TouchableOpacity>
+                accentColor="#3b82f6"
+              />
             );
           })}
         </ScrollView>
@@ -285,10 +282,6 @@ export default function AgentTraceScreen() {
 const createStyles = (colors: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
-  hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 22, paddingHorizontal: 16 },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
-  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6 },
   content: { padding: 16 },
   sectionLabel: {
     fontSize: 10, fontWeight: '900', color: colors.textSub,

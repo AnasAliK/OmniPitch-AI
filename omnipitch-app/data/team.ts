@@ -109,6 +109,10 @@ export function getBaseline(pos: Position): Baseline {
 // ─── AI Analysis Cache ────────────────────────────────────────────────────────
 let cachedAiAnalysis: Record<string, AnalysisResult> = {};
 
+export function getCachedAnalysis() {
+  return cachedAiAnalysis;
+}
+
 export function setCachedAnalysis(analysisData: Record<string, AnalysisResult>) {
   cachedAiAnalysis = analysisData;
 }

@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { DEFAULT_SCHEDULE, type PracticeSession, type PlayerOverride } from '@/data/schedule';
 import { useApp } from '@/context/AppContext';
+import { PageHeader, SelectorPill } from '@/components/SharedUI';
 
 // ─── Session Type Colors ────────────────────────────────────────────────────
 
@@ -152,26 +152,25 @@ export default function ScheduleScreen() {
   const playersAffected = Object.keys(overrides).length;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <LinearGradient
-          colors={[colors.heroGrad1, colors.heroGrad2]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>📅  COACH VIEW</Text>
-              <Text style={styles.heroTitle}>Training Schedule</Text>
-              <Text style={styles.heroSub}>Weekly Plan</Text>
-            </View>
-            {totalOverrides > 0 && (
-              <TouchableOpacity style={styles.resetBtn} onPress={resetAll}>
-                <Text style={styles.resetText}>Reset All</Text>
-              </TouchableOpacity>
-            )}
+        <PageHeader
+          kicker="📅  COACH VIEW"
+          title="Training Schedule"
+          subtitle="Weekly Tactical Plan"
+          stats={[
+            { value: DEFAULT_SCHEDULE.length, label: 'Sessions', color: '#3b82f6' },
+            { value: totalOverrides, label: 'Adjusted', color: totalOverrides > 0 ? '#f59e0b' : '#10b981', pulse: totalOverrides > 0 },
+            { value: playersAffected, label: 'Players', color: playersAffected > 0 ? '#ef4444' : '#10b981', pulse: playersAffected > 0 },
+          ]}
+        />
+
+        {/* Reset All */}
+        {totalOverrides > 0 && (
+          <View style={styles.resetRow}>
+            <SelectorPill label="↺ Reset All Overrides" isActive={false} onPress={resetAll} accentColor="#ef4444" />
           </View>
-        </LinearGradient>
+        )}
 
         <View style={styles.content}>
 
@@ -242,16 +241,7 @@ export default function ScheduleScreen() {
 const createStyles = (colors: any) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgBase },
   scroll: { flex: 1 },
-  hero: { paddingTop: Platform.OS === 'android' ? 16 : 12, paddingBottom: 22, paddingHorizontal: 16 },
-  heroRow: { flexDirection: 'row', alignItems: 'center' },
-  heroEyebrow: { fontSize: 10, fontWeight: '800', color: colors.heroEyebrow, letterSpacing: 2, marginBottom: 6 },
-  heroTitle: { fontSize: 28, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.5 },
-  heroSub: { fontSize: 13, color: colors.textSub, marginTop: 6 },
-  resetBtn: {
-    backgroundColor: 'rgba(248,113,113,0.15)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(248,113,113,0.3)',
-  },
-  resetText: { color: colors.danger, fontSize: 12, fontWeight: '800' },
+  resetRow: { paddingHorizontal: 16, paddingTop: 12 },
   content: { padding: 16 },
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   summaryCard: {
