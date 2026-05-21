@@ -14,6 +14,7 @@ import {
   Animated,
   Platform,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '@/context/AppContext';
@@ -284,7 +285,9 @@ export function PageHeader({
   stats?: { value: string | number; label: string; color?: string; pulse?: boolean }[];
 }) {
   const { theme, colors } = useApp();
+  const { width } = useWindowDimensions();
   const isLight = theme === 'light';
+  const isMobile = width < 768;
 
   const gradColors: [string, string] = isLight
     ? [colors.heroGrad1, colors.heroGrad2]
@@ -312,13 +315,13 @@ export function PageHeader({
         style={StyleSheet.absoluteFillObject}
       />
 
-      <View style={headerStyles.row}>
+      <View style={[headerStyles.row, isMobile ? { flexDirection: 'column', alignItems: 'flex-start' } : {}]}>
         {/* Left: text content */}
-        <View style={headerStyles.leftCol}>
+        <View style={[headerStyles.leftCol, isMobile ? { paddingRight: 0, marginBottom: 12 } : {}]}>
           <Text style={[headerStyles.kicker, { color: isLight ? '#10b981' : '#6366f1' }]}>
             {kicker}
           </Text>
-          <Text style={[headerStyles.title, { color: colors.textTitle }]}>{title}</Text>
+          <Text style={[headerStyles.title, { color: colors.textTitle, fontSize: isMobile ? 20 : 26 }]}>{title}</Text>
           {subtitle && (
             <Text style={[headerStyles.subtitle, { color: colors.textSub }]}>{subtitle}</Text>
           )}
@@ -326,7 +329,7 @@ export function PageHeader({
 
         {/* Right: stat glass cards */}
         {stats && stats.length > 0 && (
-          <View style={headerStyles.statsCol}>
+          <View style={[headerStyles.statsCol, isMobile ? { maxWidth: '100%', justifyContent: 'flex-start' } : {}]}>
             {stats.map((s, i) => (
               <StatGlassCard key={i} value={s.value} label={s.label} color={s.color} pulse={s.pulse} />
             ))}
@@ -415,7 +418,7 @@ export function LivePulseIndicator({ lastUpdated }: { lastUpdated?: string | nul
       <View style={pulseStyles.iconContainer}>
         {/* Pulsing rings */}
         <Animated.View style={[pulseStyles.ring, { transform: [{ scale }], opacity }]} />
-        <View style={pulseStyles.dot} />
+        <Text style={{ fontSize: 12, position: 'absolute' }}>📡</Text>
       </View>
       <View style={pulseStyles.textContainer}>
         <Text style={pulseStyles.title}>LIVE DATA STREAM</Text>

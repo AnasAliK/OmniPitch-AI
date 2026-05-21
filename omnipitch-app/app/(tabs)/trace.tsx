@@ -38,11 +38,11 @@ function buildTraceSteps(player: Player, analysis: AnalysisResult) {
 Conclusion: No anomaly detected.
 Confidence: N/A`;
   } else {
-    const anomalyLines = analysis.anomalies.map((a, i) =>
+    const anomalyLines = (analysis.anomalies || []).map((a, i) =>
       `${i + 1}. ${a.metric}: ${a.actual}\n   → Baseline: ${a.baseline}\n   → Deviation: ${a.deviation} (severity: ${(a.severity * 100).toFixed(0)}%)`
     ).join('\n\n');
 
-    orientContent = `Anomaly Detection (${analysis.anomalies.length} found):
+    orientContent = `Anomaly Detection (${(analysis.anomalies || []).length} found):
 
 ${anomalyLines}
 
@@ -109,13 +109,13 @@ Action: Continue current training program.`
         : `Issue Detected: "${analysis.title}"
 Category: ${analysis.category}
 
-Anomalies: ${analysis.indicators.map(i => `\n  ${i.color === '#10b981' ? '✓' : '⚠'} ${i.label}: ${i.value}`).join('')}
+Anomalies: ${(analysis.indicators || []).map(i => `\n  ${i.color === '#10b981' ? '✓' : '⚠'} ${i.label}: ${i.value}`).join('')}
 
 Generated Intervention:
-  • Primary: ${analysis.intervention.primary}
-  • Secondary: ${analysis.intervention.secondary}
-  • Duration: ${analysis.intervention.duration}
-  • Status Change: ${player.status} → ${analysis.intervention.statusChange}`,
+  • Primary: ${analysis.intervention?.primary || 'N/A'}
+  • Secondary: ${analysis.intervention?.secondary || 'N/A'}
+  • Duration: ${analysis.intervention?.duration || 'N/A'}
+  • Status Change: ${player.status} → ${analysis.intervention?.statusChange || 'Active'}`,
     },
     {
       id: 'act',
@@ -130,9 +130,9 @@ Player remains in current program.`
         : `Tool Call: simulate_system_state_change({
   player_id: "${player.id}",
   player_name: "${player.name}",
-  updates: {
-    status: "${player.status}" → "${analysis.intervention.statusChange}",
-    training: "${analysis.intervention.primary}",
+    updates: {
+    status: "${player.status}" → "${analysis.intervention?.statusChange || 'Active'}",
+    training: "${analysis.intervention?.primary || 'Custom Training'}",
     schedule_override: true,
     notification: {
       recipients: ["Head Coach", "${player.shortName}"],
@@ -143,7 +143,7 @@ Player remains in current program.`
 
 Result: ✓ Database updated
         ✓ Notifications dispatched
-        ✓ Schedule rewritten for ${analysis.intervention.duration}`,
+        ✓ Schedule rewritten for ${analysis.intervention?.duration || '48h'}`,
     },
   ];
 }
@@ -202,6 +202,17 @@ export default function AgentTraceScreen() {
   }
 
   const analysis = analyzePlayer(selectedPlayer);
+  
+  if (!analysis) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.textMuted }}>Loading Trace Data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const steps = buildTraceSteps(selectedPlayer, analysis);
 
   const flaggedPlayers = selectedTeam.players.filter(p => analyzePlayer(p).hasIssue);
@@ -209,7 +220,7 @@ export default function AgentTraceScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <PageHeader
           kicker="🧠  OODA LOOP"
           title="Agent Trace"
@@ -244,13 +255,13 @@ export default function AgentTraceScreen() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <Text style={styles.sumLabel}>Subject</Text>
-            <Text style={styles.sumValue}>{selectedPlayer.name} (#{selectedPlayer.number})</Text>
+            <Text style={[styles.sumValue, { flexShrink: 1, marginLeft: 12 }]} numberOfLines={1}>{selectedPlayer.name} (#{selectedPlayer.number})</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.sumLabel}>Scenario</Text>
-            <View style={[styles.scenBadge, { backgroundColor: analysis.hasIssue ? colors.warning + '20' : colors.success + '20' }]}>
-              <Text style={[styles.scenText, { color: analysis.hasIssue ? colors.warning : colors.success }]}>
+            <View style={[styles.scenBadge, { backgroundColor: analysis.hasIssue ? colors.warning + '20' : colors.success + '20', flexShrink: 1, marginLeft: 12 }]}>
+              <Text style={[styles.scenText, { color: analysis.hasIssue ? colors.warning : colors.success }]} numberOfLines={2}>
                 {analysis.title}
               </Text>
             </View>

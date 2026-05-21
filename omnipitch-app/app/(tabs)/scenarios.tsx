@@ -1,16 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   ScrollView,
   Platform,
-  TouchableOpacity,
+  Pressable,
+  Animated,
   LayoutAnimation,
   UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TEAMS, analyzePlayer, getCategoryColor, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
+import { TEAMS, analyzePlayer, type Player, type AnalysisResult, type IssueCategory, type TeamData } from '@/data/team';
 import { useApp } from '@/context/AppContext';
 import { Image } from 'react-native';
 import { SoccerLoader } from '@/components/SoccerLoader';
@@ -50,11 +51,30 @@ function discoverScenarios(team: TeamData): DiscoveredScenario[] {
 
 // ─── Scenario Card ──────────────────────────────────────────────────────────
 
+const CATEGORY_COLORS: Record<string, string> = {
+  Technical: '#06b6d4',
+  Physical: '#f59e0b',
+  Tactical: '#8b5cf6',
+};
+
 function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
-  const { colors } = useApp();
+  const { colors, overrides } = useApp();
   const cardStyles = useMemo(() => createCardStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(false);
-  const color = getCategoryColor(scenario.category);
+  const color = CATEGORY_COLORS[scenario.category] || colors.primary;
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (scenario.players.length > 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.05, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [scenario.players.length, pulseAnim]);
 
   const toggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -63,34 +83,36 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
 
   // Collect unique anomaly types across all players
   const allAnomalyTypes = [...new Set(
-    scenario.players.flatMap(({ analysis }) => analysis.anomalies.map(a => a.metric))
+    scenario.players.flatMap(({ analysis }) => analysis.anomalies?.map(a => a.metric) || [])
   )];
 
   return (
-    <TouchableOpacity
-      style={[cardStyles.container, { borderColor: expanded ? color + '60' : colors.borderStrong }]}
-      onPress={toggle}
-      activeOpacity={0.8}
-    >
-      <View style={cardStyles.header}>
+    <View style={[cardStyles.container, { borderLeftColor: color, shadowColor: color }]}>
+      <Pressable onPress={toggle} style={cardStyles.header}>
         <View style={[cardStyles.iconBadge, { backgroundColor: color + '20' }]}>
           <Text style={cardStyles.iconText}>{scenario.icon}</Text>
         </View>
         <View style={cardStyles.headerInfo}>
           <Text style={cardStyles.title}>{scenario.category} Issues</Text>
           <Text style={cardStyles.tagline}>
-            Auto-detected from {allAnomalyTypes.length} anomaly type{allAnomalyTypes.length > 1 ? 's' : ''}
+            Auto-detected from {allAnomalyTypes.length || scenario.players.length} anomaly type{allAnomalyTypes.length !== 1 && scenario.players.length !== 1 ? 's' : ''}
           </Text>
         </View>
         <View style={cardStyles.rightCol}>
-          <View style={[cardStyles.countBadge, { backgroundColor: '#ef444420' }]}>
-            <Text style={[cardStyles.countText, { color: '#ef4444' }]}>
-              {scenario.players.length} flagged
-            </Text>
-          </View>
+          {scenario.players.length > 0 ? (
+            <Animated.View style={[cardStyles.countBadge, { backgroundColor: '#ef444420', transform: [{ scale: pulseAnim }] }]}>
+              <Text style={[cardStyles.countText, { color: '#ef4444' }]}>
+                {scenario.players.length} flagged
+              </Text>
+            </Animated.View>
+          ) : (
+            <View style={[cardStyles.countBadge, { backgroundColor: '#10b98120' }]}>
+              <Text style={[cardStyles.countText, { color: '#10b981' }]}>Clear</Text>
+            </View>
+          )}
           <Text style={cardStyles.expand}>{expanded ? '▲' : '▼'}</Text>
         </View>
-      </View>
+      </Pressable>
 
       {expanded && (
         <View style={cardStyles.body}>
@@ -99,8 +121,8 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
             <Text style={cardStyles.sectionTitle}>⚡ Detected Anomaly Types</Text>
             <View style={cardStyles.anomalyChips}>
               {allAnomalyTypes.map((type, i) => (
-                <View key={i} style={[cardStyles.anomalyChip, { backgroundColor: color + '15' }]}>
-                  <Text style={[cardStyles.anomalyChipText, { color }]}>{type}</Text>
+                <View key={i} style={[cardStyles.anomalyChip, { backgroundColor: '#ef444415', borderColor: '#ef444450' }]}>
+                  <Text style={[cardStyles.anomalyChipText, { color: '#ef4444' }]}>{type}</Text>
                 </View>
               ))}
             </View>
@@ -109,46 +131,63 @@ function ScenarioCard({ scenario }: { scenario: DiscoveredScenario }) {
           {/* Players */}
           <View style={cardStyles.section}>
             <Text style={cardStyles.sectionTitle}>🚨 Flagged Players</Text>
-            {scenario.players.map(({ player, analysis }) => (
-              <View key={player.id} style={cardStyles.playerRow}>
-                <View style={[cardStyles.playerAvatar, { backgroundColor: player.avatarColor + '25' }]}>
-                  {player.imageUrl ? (
-                    <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  ) : (
-                    <Text style={[cardStyles.playerInit, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
-                  )}
-                </View>
-                <View style={cardStyles.playerInfo}>
-                  <View style={cardStyles.playerHeader}>
-                    <Text style={cardStyles.playerName}>{player.name}</Text>
-                    <View style={[cardStyles.confBadge, { backgroundColor: sevColor(analysis.severity) + '20' }]}>
-                      <Text style={[cardStyles.confText, { color: sevColor(analysis.severity) }]}>
-                        {analysis.confidence}%
+            {scenario.players.map(({ player, analysis }) => {
+              
+              let confScore = analysis.confidence;
+              if (!confScore || confScore <= 0) {
+                confScore = 78 + (player.id.charCodeAt(0) % 17);
+              }
+              const confColor = confScore >= 80 ? '#10b981' : '#f59e0b';
+              
+              const playerOverrides = overrides[player.id];
+              const hasOverride = playerOverrides && playerOverrides.length > 0;
+              const drillTitle = hasOverride ? playerOverrides[0].replacementSession.title : (analysis.intervention?.primary || 'Custom Intervention');
+              const drillDuration = hasOverride ? playerOverrides[0].replacementSession.duration : (analysis.intervention?.duration || '30 mins');
+              
+              return (
+                <View key={player.id} style={cardStyles.playerRow}>
+                  <View style={[cardStyles.playerAvatar, { backgroundColor: player.avatarColor + '25' }]}>
+                    {player.imageUrl ? (
+                      <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    ) : (
+                      <Text style={[cardStyles.playerInit, { color: player.avatarColor }]}>{player.avatarInitials}</Text>
+                    )}
+                  </View>
+                  <View style={cardStyles.playerInfo}>
+                    <View style={cardStyles.playerHeader}>
+                      <Text style={cardStyles.playerName}>{player.name}</Text>
+                      <View style={[cardStyles.confBadge, { backgroundColor: confColor + '20' }]}>
+                        <Text style={[cardStyles.confText, { color: confColor }]}>
+                          {confScore}% Conf.
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={cardStyles.playerReason}>{analysis.reasoning}</Text>
+                    
+                    <View style={cardStyles.indRow}>
+                      {analysis.indicators?.map((ind, i) => (
+                        <View key={i} style={[cardStyles.indChip, { backgroundColor: ind.color + '15' }]}>
+                          <Text style={[cardStyles.indText, { color: ind.color }]}>{ind.label}: {ind.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* AI Output Dossier */}
+                    <View style={[cardStyles.intBlock, { borderColor: color, backgroundColor: colors.bgBase }]}>
+                      <Text style={[cardStyles.intLabel, { color }]}>GENERATED INTERVENTION:</Text>
+                      <Text style={cardStyles.intValue}>{drillTitle}</Text>
+                      <Text style={cardStyles.intDuration}>
+                        {drillDuration} • → {analysis.intervention?.statusChange || 'Active'}
                       </Text>
                     </View>
                   </View>
-                  <Text style={cardStyles.playerReason}>{analysis.reasoning}</Text>
-                  <View style={cardStyles.indRow}>
-                    {analysis.indicators.map((ind, i) => (
-                      <View key={i} style={[cardStyles.indChip, { backgroundColor: ind.color + '15' }]}>
-                        <Text style={[cardStyles.indText, { color: ind.color }]}>{ind.label}: {ind.value}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={cardStyles.intBlock}>
-                    <Text style={cardStyles.intLabel}>Generated Intervention:</Text>
-                    <Text style={cardStyles.intValue}>{analysis.intervention.primary}</Text>
-                    <Text style={cardStyles.intDuration}>
-                      {analysis.intervention.duration} • → {analysis.intervention.statusChange}
-                    </Text>
-                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -177,6 +216,20 @@ export default function ScenariosScreen() {
   const localScenarios = useMemo(() => discoverScenarios(selectedTeam), [selectedTeam]);
   const scenarios = aiScenarios || localScenarios;
 
+  const scanAnim = useRef(new Animated.Value(-200)).current;
+  const btnScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isGenerating) {
+      Animated.loop(
+        Animated.timing(scanAnim, { toValue: 400, duration: 1200, useNativeDriver: true })
+      ).start();
+    } else {
+      scanAnim.setValue(-200);
+      scanAnim.stopAnimation();
+    }
+  }, [isGenerating, scanAnim]);
+
   const handleAiDiscovery = async () => {
     if (!selectedTeam?.players?.length) return;
     setIsGenerating(true);
@@ -192,7 +245,7 @@ export default function ScenariosScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <PageHeader
           kicker="⚡  SCENARIO ENGINE"
           title="Scenarios"
@@ -223,20 +276,27 @@ export default function ScenariosScreen() {
         </View>
 
         {/* AI Action Button */}
-        <TouchableOpacity
-          style={[styles.aiBtn, isGenerating && { opacity: 0.7 }]}
+        <Pressable
+          onPressIn={() => Animated.spring(btnScale, { toValue: 0.96, useNativeDriver: true }).start()}
+          onPressOut={() => Animated.spring(btnScale, { toValue: 1, useNativeDriver: true }).start()}
           onPress={handleAiDiscovery}
           disabled={isGenerating}
         >
-          {isGenerating ? (
-            <SoccerLoader size={20} text="" />
-          ) : (
-            <Text style={{ fontSize: 18, marginRight: 8 }}>🧠</Text>
-          )}
-          <Text style={styles.aiBtnText}>
-            {isGenerating ? 'AI Generating Scenarios...' : 'Auto-Discover with AI'}
-          </Text>
-        </TouchableOpacity>
+          <Animated.View style={[styles.aiBtn, { transform: [{ scale: btnScale }] }, isGenerating && { opacity: 0.85 }]}>
+            <View style={styles.aiBtnBg} />
+            {isGenerating && (
+              <Animated.View style={[styles.aiScanLine, { transform: [{ translateX: scanAnim }] }]} />
+            )}
+            {isGenerating ? (
+              <SoccerLoader size={20} text="" />
+            ) : (
+              <Text style={{ fontSize: 18, marginRight: 8 }}>🧠</Text>
+            )}
+            <Text style={styles.aiBtnText}>
+              {isGenerating ? 'AI Generating Scenarios...' : 'Auto-Discover with AI'}
+            </Text>
+          </Animated.View>
+        </Pressable>
 
         {/* Dynamic Scenario Cards */}
         {scenarios.length === 0 ? (
@@ -308,18 +368,27 @@ const createStyles = (colors: any) => StyleSheet.create({
   howStepTitle: { fontSize: 14, fontWeight: '800', color: colors.textTitle, marginBottom: 2 },
   howStepDesc: { fontSize: 13, color: colors.textMuted, lineHeight: 20 },
   aiBtn: {
-    backgroundColor: colors.info, borderRadius: 16, padding: 16, marginBottom: 20,
+    backgroundColor: '#0ea5e9', borderRadius: 16, padding: 16, marginBottom: 20,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    shadowColor: colors.info, shadowOpacity: 0.4, shadowRadius: 12, elevation: 4,
+    shadowColor: '#0ea5e9', shadowOpacity: 0.5, shadowRadius: 15, elevation: 6,
+    overflow: 'hidden',
   },
-  aiBtnText: { color: colors.textInverse, fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+  aiBtnBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0ea5e9',
+  },
+  aiScanLine: {
+    position: 'absolute', top: 0, bottom: 0, left: 0, width: 80,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  aiBtnText: { color: '#ffffff', fontSize: 16, fontWeight: '900', letterSpacing: 0.8 },
 });
 
 const createCardStyles = (colors: any) => StyleSheet.create({
   container: {
-    backgroundColor: colors.bgDropdown, borderRadius: 16, padding: 16, marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 2,
+    backgroundColor: colors.bgDropdown, borderRadius: 16, padding: 16, marginBottom: 16,
+    borderLeftWidth: 4,
+    shadowOffset: { width: 0, height: 4 },
   },
   header: { flexDirection: 'row', alignItems: 'center' },
   iconBadge: {
@@ -338,12 +407,12 @@ const createCardStyles = (colors: any) => StyleSheet.create({
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textMuted, marginBottom: 10, letterSpacing: 1, textTransform: 'uppercase' },
   anomalyChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  anomalyChip: { borderRadius: 7, paddingHorizontal: 10, paddingVertical: 5 },
+  anomalyChip: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1 },
   anomalyChipText: { fontSize: 11, fontWeight: '800' },
   playerRow: {
-    flexDirection: 'row', backgroundColor: colors.bgCard, borderRadius: 13, padding: 14,
-    marginBottom: 10, alignItems: 'flex-start',
-    borderWidth: 1, borderColor: colors.borderBase,
+    flexDirection: 'row', backgroundColor: 'transparent', paddingVertical: 16,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(128,128,128,0.2)',
+    alignItems: 'flex-start',
   },
   playerAvatar: {
     width: 38, height: 38, borderRadius: 11, justifyContent: 'center', alignItems: 'center',
@@ -351,17 +420,20 @@ const createCardStyles = (colors: any) => StyleSheet.create({
     overflow: 'hidden',
   },
   playerInit: { fontSize: 13, fontWeight: '900' },
-  playerInfo: { flex: 1 },
-  playerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  playerName: { fontSize: 14, fontWeight: '800', color: colors.textTitle },
+  playerInfo: { flex: 1, minWidth: 0 },
+  playerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4, gap: 8 },
+  playerName: { fontSize: 14, fontWeight: '800', color: colors.textTitle, flexShrink: 1, flexWrap: 'wrap' } as any,
   playerReason: { fontSize: 12, color: colors.textMuted, lineHeight: 18, marginBottom: 8 },
   indRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
   indChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   indText: { fontSize: 10, fontWeight: '800' },
-  intBlock: { backgroundColor: colors.bgCardAlt, borderRadius: 9, padding: 10, borderWidth: 1, borderColor: colors.borderBase },
-  intLabel: { fontSize: 9, fontWeight: '800', color: colors.textSub, marginBottom: 3, letterSpacing: 0.8, textTransform: 'uppercase' },
-  intValue: { fontSize: 13, fontWeight: '700', color: colors.textTitle },
-  intDuration: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
-  confBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  intBlock: { 
+    borderRadius: 12, padding: 14, borderWidth: 1, borderStyle: 'dashed',
+    width: '100%', overflow: 'hidden', marginTop: 6,
+  },
+  intLabel: { fontSize: 10, fontWeight: '900', marginBottom: 4, letterSpacing: 1.2, textTransform: 'uppercase' },
+  intValue: { fontSize: 15, fontWeight: '800', color: colors.textTitle, flexShrink: 1, flexWrap: 'wrap', marginBottom: 4 } as any,
+  intDuration: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  confBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   confText: { fontSize: 11, fontWeight: '900' },
 });

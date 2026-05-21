@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TeamData, Player, analyzePlayer, getBaseline, getCategoryColor } from '@/data/team';
 import { useApp } from '@/context/AppContext';
@@ -9,7 +9,10 @@ import { useApp } from '@/context/AppContext';
 // ─── Team Performance Summary ───────────────────────────────────────────────
 
 function FluidBar({ label, value, max, colors, gradColors, diffLabel, teamStyles }: any) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isMobile = windowWidth < 768;
   const fillAnim = useRef(new Animated.Value(0)).current;
+  const hoverAnim = useRef(new Animated.Value(1)).current;
   const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
@@ -20,23 +23,37 @@ function FluidBar({ label, value, max, colors, gradColors, diffLabel, teamStyles
     }).start();
   }, [value, max]);
 
+  useEffect(() => {
+    Animated.spring(hoverAnim, {
+      toValue: hovered ? 1.2 : 1,
+      useNativeDriver: false,
+      friction: 6,
+    }).start();
+  }, [hovered]);
+
   const width = fillAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] });
 
   return (
-    <View style={teamStyles.chartRow}>
-      <View style={teamStyles.chartLabelCol}>
+    <View style={[
+      teamStyles.chartRow, 
+      isMobile ? { flexDirection: 'column', alignItems: 'flex-start' } : {}
+    ]}>
+      <View style={[teamStyles.chartLabelCol, isMobile ? { width: '100%', marginBottom: 6, flexDirection: 'row', justifyContent: 'space-between' } : { width: 120 }]}>
         <Text style={teamStyles.chartLabel}>{label}</Text>
         <Text style={teamStyles.chartValue}>{typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value}</Text>
       </View>
-      <View style={{ flex: 1, position: 'relative', zIndex: hovered ? 10 : 1 }}>
+      <View style={{ flex: 1, width: '100%', position: 'relative', zIndex: hovered ? 10 : 1, justifyContent: 'center' }}>
+        {/* @ts-ignore */}
         <TouchableOpacity
           activeOpacity={1}
           // @ts-ignore
           onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-          style={teamStyles.barContainer}
+          title={diffLabel}
         >
-          <Animated.View style={[teamStyles.barFill, { width }]}>
-            <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+          <Animated.View style={[teamStyles.barContainer, { transform: [{ scaleY: hoverAnim }] }]}>
+            <Animated.View style={[teamStyles.barFill, { width, opacity: hovered ? 1 : 0.9 }]}>
+              <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFillObject} />
+            </Animated.View>
           </Animated.View>
         </TouchableOpacity>
         {hovered && diffLabel && (
@@ -466,12 +483,12 @@ export function PhysicalOutputTracker({ player }: { player: Player }) {
 const createTeamStyles = (colors: any) => StyleSheet.create({
   container: { backgroundColor: colors.bgCardAlt, borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: colors.borderSubtle },
   title: { fontSize: 16, fontWeight: '800', color: colors.textTitle, marginBottom: 16 },
-  chartRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  chartLabelCol: { width: 100 },
+  chartRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, width: '100%' },
+  chartLabelCol: { width: 120 },
   chartLabel: { fontSize: 11, color: colors.textSub, fontWeight: '600' },
   chartValue: { fontSize: 14, color: colors.textTitle, fontWeight: '800' },
-  barContainer: { flex: 1, height: 14, backgroundColor: colors.borderBase, borderRadius: 7, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 7 },
+  barContainer: { height: 10, width: '100%', backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 999, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  barFill: { height: '100%', borderRadius: 999 },
   sectionTitle: { fontSize: 12, fontWeight: '800', color: colors.textSub, marginTop: 16, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
   stackedBarContainer: { flexDirection: 'row', height: 16, borderRadius: 8, marginBottom: 10, position: 'relative' },
   stackedSegment: { height: '100%' },

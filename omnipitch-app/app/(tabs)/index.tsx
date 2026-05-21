@@ -11,6 +11,7 @@ import {
   Image,
   LayoutAnimation,
   UIManager,
+  useWindowDimensions,
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -63,6 +64,8 @@ function getStatusPillColors(statusLabel: string, theme: 'light' | 'dark') {
 function PlayerRow({ player, onPress, isSelected, hasIntervention, colors, theme }: {
   player: Player; onPress: () => void; isSelected: boolean; hasIntervention: boolean; colors: any; theme: 'light' | 'dark';
 }) {
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const [hovered, setHovered] = useState(false);
   const analysis = analyzePlayer(player);
   const posColor = getPositionColor(player.position);
@@ -117,15 +120,15 @@ function PlayerRow({ player, onPress, isSelected, hasIntervention, colors, theme
       {/* Active glow left bar */}
       {isSelected && <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: statusCol, borderTopLeftRadius: 14, borderBottomLeftRadius: 14 }} />}
 
-      <View style={[{ width: 46, height: 46, borderRadius: 23, justifyContent: 'center', alignItems: 'center', marginRight: 12, overflow: 'hidden', borderWidth: 1.5, borderColor: posColor + '50' }, { backgroundColor: player.avatarColor }]}>
+      <View style={[{ width: isMobile ? 38 : 46, height: isMobile ? 38 : 46, borderRadius: isMobile ? 19 : 23, justifyContent: 'center', alignItems: 'center', marginRight: isMobile ? 8 : 12, overflow: 'hidden', borderWidth: 1.5, borderColor: posColor + '50' }, { backgroundColor: player.avatarColor }]}>
         {player.imageUrl ? (
           <Image source={{ uri: player.imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         ) : (
-          <Text style={{ fontSize: 16, fontWeight: '900', color: '#fff' }}>{player.avatarInitials}</Text>
+          <Text style={{ fontSize: isMobile ? 14 : 16, fontWeight: '900', color: '#fff' }}>{player.avatarInitials}</Text>
         )}
       </View>
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text style={{ fontSize: 15, fontWeight: '800', color: colors.textTitle, letterSpacing: 0.1, marginBottom: 4 }}>{player.shortName}</Text>
+        <Text style={{ fontSize: isMobile ? 13 : 15, fontWeight: '800', color: colors.textTitle, letterSpacing: 0.1, marginBottom: 4 }} numberOfLines={1}>{player.shortName}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <View style={{ borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: posColor + '60' }}>
             <Text style={{ fontSize: 9, fontWeight: '900', letterSpacing: 0.5, color: posColor }}>{player.position}</Text>
@@ -235,7 +238,7 @@ function InsightCard({ analysis, severityColor, styles, colors, theme }: any) {
       </View>
       <Text style={[styles.insightBody, { zIndex: 1 }]}>{analysis.reasoning}</Text>
       <View style={[styles.indicatorRow, { zIndex: 1 }]}>
-        {analysis.indicators.map((ind: any, i: number) => (
+        {analysis.indicators?.map((ind: any, i: number) => (
           <View key={i} style={[styles.indicator, { backgroundColor: ind.color + '18', borderWidth: 1, borderColor: ind.color + '35' }]}>
             <Text style={[styles.indValue, { color: ind.color }]}>{ind.value}</Text>
             <Text style={styles.indLabel}>{ind.label}</Text>
@@ -345,6 +348,7 @@ export default function OmniPitchDashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [notifPayload, setNotifPayload] = useState<AnalysisResult | null>(null);
+  const [aiResponse, setAiResponse] = useState<any>(null);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [prefetchedPlayers, setPrefetchedPlayers] = useState<Record<string, boolean>>({});
 
@@ -497,11 +501,11 @@ export default function OmniPitchDashboard() {
   }, [selectedTeam, selectedPlayer?.id]);
 
   useEffect(() => {
-    if (selectedPlayer && hasIntervention(selectedPlayer.id)) {
+    if (selectedPlayer && (hasIntervention(selectedPlayer.id) || aiResponse)) {
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     }
-  }, [hasIntervention, selectedPlayer?.id, fadeAnim]);
+  }, [hasIntervention, selectedPlayer?.id, fadeAnim, aiResponse]);
 
   useEffect(() => {
     if (isProcessing) {
@@ -540,7 +544,8 @@ export default function OmniPitchDashboard() {
       setShowNotification(true);
       setTimeout(() => {
         setShowNotification(false);
-        applyIntervention(selectedPlayer);
+        setAiResponse(aiAnalysis);
+        applyIntervention(selectedPlayer, aiAnalysis.interventions);
       }, 3500);
     } else {
       // Fallback if AI fails
@@ -548,14 +553,14 @@ export default function OmniPitchDashboard() {
       setShowNotification(true);
       setTimeout(() => {
         setShowNotification(false);
-        applyIntervention(selectedPlayer);
+        applyIntervention(selectedPlayer, aiAnalysis?.interventions);
       }, 2500);
     }
   }, [selectedPlayer, applyIntervention, generateAiIntervention]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* ── Hero Header ── */}
         <PageHeader
           kicker="⚽  SQUAD VIEW"
@@ -603,7 +608,7 @@ export default function OmniPitchDashboard() {
                   const hasInt = hasIntervention(p.id);
                   const pAnalysis = analyzePlayer(p);
                   const pIsApplied = hasIntervention(p.id);
-                  const pCurrentStatus = pIsApplied ? pAnalysis.intervention.statusChange : p.status;
+                  const pCurrentStatus = pIsApplied ? (pAnalysis.intervention?.statusChange || p.status) : p.status;
                   const pStatusColor = statusColors[pCurrentStatus] ?? '#64748b';
                   const pStats = p.stats;
                   const pConvRate = pStats.shotsTotal > 0 ? ((pStats.goals / pStats.shotsTotal) * 100).toFixed(1) : '0';
@@ -625,16 +630,7 @@ export default function OmniPitchDashboard() {
                           } else {
                             setSelectedPlayer(p);
                             fadeAnim.setValue(0);
-
-                            // On-demand fetch
-                            const pAnalysis = analyzePlayer(p);
-                            if (pAnalysis.hasIssue && !hasIntervention(p.id) && !prefetchedPlayers[p.id]) {
-                              setPrefetchedPlayers(prev => ({ ...prev, [p.id]: true }));
-                              const cached = getCachedAnalysis()[p.id];
-                              if (!cached) {
-                                generateAiIntervention(p).catch(console.error);
-                              }
-                            }
+                            setAiResponse(null);
                           }
                         }}
                       />
@@ -675,51 +671,54 @@ export default function OmniPitchDashboard() {
                             </View>
                           </View>
 
-                          {/* Analysis Insight — AI vulnerability card with scanning animation */}
-                          {pAnalysis.hasIssue && !pIsApplied && (
-                            <InsightCard analysis={pAnalysis} severityColor={severityColor} styles={styles} colors={colors} theme={theme} />
+                          {/* Tactical Vulnerability (Yellow Box) */}
+                          {aiResponse && (
+                            <View style={[styles.insightCard, { borderColor: '#f59e0b50' }]}>
+                              <View style={[styles.insightHeader, { zIndex: 1 }]}>
+                                <Text style={{ fontSize: 16 }}>🔍</Text>
+                                <Text style={[styles.insightLabel, { color: '#f59e0b' }]}>Tactical Vulnerability</Text>
+                              </View>
+                              <Text style={[styles.insightBody, { zIndex: 1 }]}>{aiResponse.ooda_trace?.orient_summary}</Text>
+                              <Text style={[styles.insightBody, { zIndex: 1, color: colors.textMuted, marginTop: 8 }]}>{aiResponse.ooda_trace?.decide_summary}</Text>
+                            </View>
                           )}
 
                           {/* Intervention Applied — Mapping view */}
-                          {pIsApplied && (
-                            <Animated.View style={[styles.appliedCard, { opacity: fadeAnim }]}>
+                          {aiResponse && (
+                            <Animated.View style={[styles.appliedCard, { opacity: fadeAnim, backgroundColor: 'rgba(16, 185, 129, 0.05)', borderColor: '#10B981', borderWidth: 1 }]}>
                               <View style={styles.appliedHeader}>
-                                <Text style={{ fontSize: 20 }}>✅</Text>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.appliedTitle}>Intervention Applied</Text>
-                                  <Text style={styles.appliedScenario}>{pAnalysis.title}</Text>
+                                <Text style={{ fontSize: 24 }}>✅</Text>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                  <Text style={[styles.appliedTitle, { color: '#10B981' }]}>Intervention Applied</Text>
+                                  <Text style={styles.appliedScenario}>{aiResponse.ooda_trace?.orient_summary?.substring(0, 50)}...</Text>
                                 </View>
                               </View>
-                              {pOverrides.map((o, i) => {
-                                const sessionType = o.replacementSession.type;
-                                const leftBorderColor =
-                                  sessionType === 'recovery' ? '#06b6d4'
-                                  : sessionType === 'tactical' ? '#8b5cf6'
-                                  : sessionType === 'individual' ? '#f59e0b'
-                                  : sessionType === 'positional' ? '#3b82f6'
-                                  : '#10b981';
-                                const origLabel =
-                                  o.originalSessionId === 'thu-morning' ? 'Team Tactical Session'
-                                  : o.originalSessionId === 'thu-afternoon' ? 'Defensive Shape'
-                                  : o.originalSessionId === 'thu-gk' ? 'GK Distribution & Shot-Stopping'
-                                  : o.originalSessionId === 'fri-morning' ? 'MD-1: Set Pieces'
-                                  : o.originalSessionId;
+                              {aiResponse.interventions?.map((drill: any, index: number) => {
+                                const leftBorderColor = 
+                                  drill.icon_type === 'cone' ? '#f59e0b' : 
+                                  drill.icon_type === 'gym' ? '#ef4444' : 
+                                  drill.icon_type === 'tactical' ? '#8b5cf6' : 
+                                  drill.icon_type === 'recovery' ? '#06b6d4' : '#3b82f6';
+                                
+                                const oldSchedules = ["Team Tactical Session", "Defensive Shape", "MD-1: Set Pieces"];
+                                const oldScheduleText = oldSchedules[index % oldSchedules.length];
+
                                 return (
-                                  <View key={i} style={styles.schedChangeRow}>
-                                    {/* Old Schedule — Deprecated */}
+                                  <View key={index} style={styles.schedChangeRow}>
+                                    {/* Left Side: Old Schedule */}
                                     <View style={styles.schedOriginal}>
-                                      <Text style={styles.schedStrike}>{origLabel}</Text>
+                                      <Text style={styles.schedStrike}>{oldScheduleText}</Text>
                                     </View>
-                                    {/* Glowing arrow */}
+                                    {/* Arrow */}
                                     <Text style={[styles.schedArrow, Platform.select({ web: { textShadow: '0 0 8px #6366f1' } })]}>
                                       →
                                     </Text>
-                                    {/* New AI Session Card with left-border color */}
+                                    {/* Right Side: New AI Drill */}
                                     <View style={[styles.schedNew, { borderLeftWidth: 3, borderLeftColor: leftBorderColor, borderColor: leftBorderColor + '30' }]}>
-                                      <Text style={styles.schedNewIcon}>{o.replacementSession.icon}</Text>
+                                      <Text style={styles.schedNewIcon}>🛠</Text>
                                       <View style={{ flex: 1 }}>
-                                        <Text style={[styles.schedNewTitle, { color: leftBorderColor }]}>{o.replacementSession.title}</Text>
-                                        <Text style={styles.schedNewMeta}>{o.replacementSession.day} {o.replacementSession.time} • {o.replacementSession.duration}</Text>
+                                        <Text style={[styles.schedNewTitle, { color: leftBorderColor }]}>{drill.title}</Text>
+                                        <Text style={styles.schedNewMeta}>{drill.schedule_day} • {drill.schedule_time} • {drill.duration_mins} mins</Text>
                                       </View>
                                     </View>
                                   </View>
@@ -729,8 +728,8 @@ export default function OmniPitchDashboard() {
                             </Animated.View>
                           )}
 
-                          {/* Action Button */}
-                          {pAnalysis.hasIssue && (
+                          {/* Action Button (Hidden if intervention is applied) */}
+                          {pAnalysis.hasIssue && !aiResponse && (
                             <ApplyButton
                               isApplied={pIsApplied}
                               isProcessing={isProcessing}

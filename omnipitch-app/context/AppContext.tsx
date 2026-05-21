@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { type PlayerOverride } from '@/data/schedule';
+import { type PlayerOverride, type PracticeSession, DEFAULT_SCHEDULE } from '@/data/schedule';
 import { generateInterventionSessions } from '@/data/schedule';
 import { TEAMS, analyzePlayer, setCachedAnalysis, type Player, type TeamData } from '@/data/team';
 import { Colors } from '@/constants/theme';
@@ -16,7 +16,7 @@ interface AppState {
   /** Per-player intervention overrides keyed by playerId */
   overrides: Record<string, PlayerOverride[]>;
   /** Apply an intervention for a player — generates schedule overrides */
-  applyIntervention: (player: Player) => void;
+  applyIntervention: (player: Player, aiInterventions?: any[]) => void;
   /** Reset a single player's intervention */
   resetIntervention: (playerId: string) => void;
   /** Reset all interventions */
@@ -59,7 +59,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedTeamId(teamId);
     setOverrides({}); // Reset interventions when switching teams
     setCachedAnalysis({}); // Clear AI cache when switching teams
-    
+
     // Attempt real-time fetch from local server
     setIsLoadingTeam(true);
     try {
@@ -71,11 +71,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else if (Platform.OS === 'android') {
         serverUrl = 'http://10.0.2.2:3000';
       }
-      
+
       const response = await fetch(`${serverUrl}/api/scrape/${teamId}`);
       if (response.ok) {
         const teamData = await response.json();
-        
+
         // Save the team data
         setTeamsDataState(prev => {
           const newTeams = [...prev];
@@ -101,26 +101,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // after the welcome modal is dismissed (via dataFetchReady flag).
   // This ensures the Welcome → Data Load → Sync modal sequence is correct.
 
-  const applyIntervention = useCallback((player: Player) => {
+  const applyIntervention = useCallback((player: Player, aiInterventions?: any[]) => {
     const analysis = analyzePlayer(player);
     if (!analysis.hasIssue) return;
 
-    const { replacements } = generateInterventionSessions(
-      analysis.category,
-      player.shortName,
-      analysis.intervention.primary,
-      analysis.intervention.secondary,
-    );
+    let playerOverrides: PlayerOverride[] = [];
 
-    const playerOverrides: PlayerOverride[] = replacements.map(r => ({
-      playerId: player.id,
-      playerName: player.shortName,
-      originalSessionId: r.originalId,
-      replacementSession: r.session,
-      reason: analysis.reasoning,
-      scenarioLabel: analysis.title,
-      appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }));
+    if (aiInterventions && aiInterventions.length > 0) {
+      playerOverrides = aiInterventions.map((drill, index) => {
+        const defaultSession = DEFAULT_SCHEDULE.find(s => s.day === drill.schedule_day) || DEFAULT_SCHEDULE[0];
+
+        let type: PracticeSession['type'] = 'tactical';
+        let icon = '🛠';
+        if (drill.icon_type === 'recovery') { type = 'recovery'; icon = '💧'; }
+        else if (drill.icon_type === 'gym') { type = 'individual'; icon = '💪'; }
+        else if (drill.icon_type === 'tactical') { type = 'tactical'; icon = '🧠'; }
+
+        return {
+          playerId: player.id,
+          playerName: player.shortName,
+          originalSessionId: defaultSession.id,
+          replacementSession: {
+            id: `ai-int-${Date.now()}-${index}`,
+            day: drill.schedule_day || defaultSession.day,
+            date: defaultSession.date,
+            time: drill.schedule_time || '10:00 AM',
+            title: drill.title,
+            type,
+            duration: `${drill.duration_mins} mins`,
+            icon,
+            participants: player.shortName,
+            notes: 'AI-generated dynamic adjustment',
+          },
+          reason: analysis.reasoning,
+          scenarioLabel: analysis.title,
+          appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+      });
+    } else {
+      const { replacements } = generateInterventionSessions(
+        analysis.category,
+        player.shortName,
+        analysis.intervention?.primary || 'AI-Generated Focus Session',
+        analysis.intervention?.secondary || 'Custom Tactical Review',
+      );
+
+      playerOverrides = replacements.map(r => ({
+        playerId: player.id,
+        playerName: player.shortName,
+        originalSessionId: r.originalId,
+        replacementSession: r.session,
+        reason: analysis.reasoning,
+        scenarioLabel: analysis.title,
+        appliedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      }));
+    }
 
     setOverrides(prev => ({
       ...prev,

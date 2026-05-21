@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   ScrollView,
   Platform,
-  TouchableOpacity,
+  Pressable,
+  Animated,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DEFAULT_SCHEDULE, type PracticeSession, type PlayerOverride } from '@/data/schedule';
@@ -36,68 +38,87 @@ function SessionCard({ session, overrides, colors }: { session: PracticeSession;
   const cStyles = React.useMemo(() => createCardStyles(colors), [colors]);
   const color = typeColors[session.type] ?? colors.textMuted;
   const hasOverrides = overrides.length > 0;
+  
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [expanded, setExpanded] = useState(false);
+
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
 
   return (
-    <View style={[cStyles.container, { borderLeftColor: color }]}>
-      {/* Header */}
-      <View style={cStyles.header}>
-        <Text style={cStyles.icon}>{session.icon}</Text>
-        <View style={cStyles.headerInfo}>
-          <Text style={cStyles.title}>{session.title}</Text>
-          <View style={cStyles.metaRow}>
-            <Text style={cStyles.time}>{session.time}</Text>
-            <Text style={cStyles.dot}>•</Text>
-            <Text style={cStyles.duration}>{session.duration}</Text>
-            <View style={[cStyles.typeBadge, { backgroundColor: color + '20' }]}>
-              <Text style={[cStyles.typeText, { color }]}>{typeLabels[session.type]}</Text>
+    <Pressable
+      // @ts-ignore
+      onHoverIn={() => Animated.timing(scaleAnim, { toValue: 1.01, duration: 150, useNativeDriver: true }).start()}
+      onHoverOut={() => Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start()}
+      onPress={() => hasOverrides && toggleExpand()}
+    >
+      <Animated.View style={[cStyles.container, { borderLeftColor: color, shadowColor: color, transform: [{ scale: scaleAnim }] }]}>
+        {/* Header */}
+        <View style={cStyles.header}>
+          <Text style={cStyles.icon}>{session.icon}</Text>
+          <View style={cStyles.headerInfo}>
+            <Text style={cStyles.title}>{session.title}</Text>
+            <View style={cStyles.metaRow}>
+              <Text style={cStyles.time}>{session.time}</Text>
+              <Text style={cStyles.dot}>•</Text>
+              <Text style={cStyles.duration}>{session.duration}</Text>
+              <View style={[cStyles.typeBadge, { backgroundColor: color + '1A' }]}>
+                <Text style={[cStyles.typeText, { color }]}>{typeLabels[session.type]}</Text>
+              </View>
             </View>
           </View>
+          {hasOverrides && (
+            <Text style={{ color: colors.textMuted, fontSize: 16 }}>{expanded ? '▲' : '▼'}</Text>
+          )}
         </View>
-      </View>
 
-      {/* Participants */}
-      <View style={cStyles.participantRow}>
-        <Text style={cStyles.participantLabel}>👥</Text>
-        <Text style={cStyles.participantText}>{session.participants}</Text>
-      </View>
+        {/* Participants */}
+        <View style={cStyles.participantRow}>
+          <Text style={cStyles.participantLabel}>👥</Text>
+          <Text style={cStyles.participantText}>{session.participants}</Text>
+        </View>
 
-      {/* Notes */}
-      {session.notes && (
-        <Text style={cStyles.notes}>{session.notes}</Text>
-      )}
+        {/* Notes */}
+        {session.notes && (
+          <Text style={cStyles.notes}>{session.notes}</Text>
+        )}
 
-      {/* Player Overrides */}
-      {hasOverrides && (
-        <View style={cStyles.overridesSection}>
-          <Text style={cStyles.overridesTitle}>⚠️ Player Adjustments</Text>
-          {overrides.map((o, i) => (
-            <View key={i} style={cStyles.overrideRow}>
-              <View style={cStyles.overrideHeader}>
-                <View style={cStyles.overridePlayerBadge}>
-                  <Text style={cStyles.overridePlayerText}>{o.playerName}</Text>
+        {/* Player Overrides */}
+        {hasOverrides && expanded && (
+          <View style={cStyles.overridesSection}>
+            <Text style={cStyles.overridesTitle}>⚠️ Player Adjustments</Text>
+            {overrides.map((o, i) => (
+              <View key={i} style={cStyles.overrideRow}>
+                <View style={cStyles.overrideHeader}>
+                  <View style={cStyles.overridePlayerBadge}>
+                    <Text style={cStyles.overridePlayerText}>{o.playerName}</Text>
+                  </View>
+                  <View style={cStyles.overrideScenBadge}>
+                    <Text style={cStyles.overrideScenText}>{o.scenarioLabel}</Text>
+                  </View>
                 </View>
-                <View style={cStyles.overrideScenBadge}>
-                  <Text style={cStyles.overrideScenText}>{o.scenarioLabel}</Text>
+                <View style={cStyles.replacementCard}>
+                  <Text style={cStyles.replacementIcon}>{o.replacementSession.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={cStyles.replacementTitle}>{o.replacementSession.title}</Text>
+                    <Text style={cStyles.replacementMeta}>
+                      {o.replacementSession.time} • {o.replacementSession.duration}
+                    </Text>
+                    {o.replacementSession.notes && (
+                      <Text style={cStyles.replacementNotes}>{o.replacementSession.notes}</Text>
+                    )}
+                  </View>
                 </View>
               </View>
-              <View style={cStyles.replacementCard}>
-                <Text style={cStyles.replacementIcon}>{o.replacementSession.icon}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={cStyles.replacementTitle}>{o.replacementSession.title}</Text>
-                  <Text style={cStyles.replacementMeta}>
-                    {o.replacementSession.time} • {o.replacementSession.duration}
-                  </Text>
-                  {o.replacementSession.notes && (
-                    <Text style={cStyles.replacementNotes}>{o.replacementSession.notes}</Text>
-                  )}
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
+            ))}
+          </View>
+        )}
+      </Animated.View>
+    </Pressable>
   );
+
 }
 
 // ─── Day Group ──────────────────────────────────────────────────────────────
@@ -113,26 +134,34 @@ function DayGroup({ day, date, sessions, getOverridesForSession, colors }: {
   return (
     <View style={dStyles.container}>
       <View style={dStyles.header}>
-        <Text style={dStyles.day}>{day}</Text>
-        <Text style={dStyles.date}>{date}</Text>
+        <View style={dStyles.node} />
+        <View style={dStyles.headerTextCol}>
+          <Text style={dStyles.day}>{day}</Text>
+          <Text style={dStyles.date}>{date}</Text>
+        </View>
       </View>
-      {sessions.map(s => (
-        <SessionCard
-          key={s.id}
-          session={s}
-          overrides={getOverridesForSession(s.id)}
-          colors={colors}
-        />
-      ))}
+      <View style={dStyles.trackContainer}>
+        {sessions.map(s => (
+          <SessionCard
+            key={s.id}
+            session={s}
+            overrides={getOverridesForSession(s.id)}
+            colors={colors}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const createDayStyles = (colors: any) => StyleSheet.create({
   container: { marginBottom: 26 },
-  header: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 12, gap: 10 },
-  day: { fontSize: 20, fontWeight: '900', color: colors.textTitle, letterSpacing: -0.3 },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  node: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#3b82f6', marginLeft: 4, marginRight: 16, shadowColor: '#3b82f6', shadowOpacity: 0.6, shadowRadius: 4, elevation: 2 },
+  headerTextCol: { flexDirection: 'row', alignItems: 'baseline', gap: 10 },
+  day: { fontSize: 20, fontWeight: '900', color: colors.textTitle, letterSpacing: 1.2, textTransform: 'uppercase' },
   date: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  trackContainer: { borderLeftWidth: 2, borderLeftColor: colors.borderSubtle, marginLeft: 6, paddingLeft: 22, paddingBottom: 10 },
 });
 
 // ─── Main Screen ────────────────────────────────────────────────────────────
@@ -153,7 +182,7 @@ export default function ScheduleScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <PageHeader
           kicker="📅  COACH VIEW"
           title="Training Schedule"
@@ -280,31 +309,32 @@ const createCardStyles = (colors: any) => StyleSheet.create({
   time: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
   dot: { color: colors.textMuted, fontSize: 10 },
   duration: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
-  typeBadge: { borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3, marginLeft: 4 },
-  typeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  typeBadge: { borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 4 },
+  typeText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.8 },
   participantRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   participantLabel: { fontSize: 14 },
   participantText: { fontSize: 13, color: colors.textSub, fontWeight: '600' },
   notes: { fontSize: 12, color: colors.textMuted, lineHeight: 20, marginTop: 4 },
   overridesSection: {
-    marginTop: 14, borderTopWidth: 1, borderTopColor: colors.borderSubtle, paddingTop: 12,
+    marginTop: 14, backgroundColor: colors.bgBase, borderRadius: 12, padding: 12,
+    borderWidth: 1, borderColor: colors.borderSubtle,
   },
   overridesTitle: { fontSize: 12, fontWeight: '800', color: colors.warning, marginBottom: 10, letterSpacing: 0.3 },
   overrideRow: { marginBottom: 10 },
-  overrideHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  overrideHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8 },
   overridePlayerBadge: {
-    backgroundColor: colors.info + '20', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4,
+    backgroundColor: colors.info + '15', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4,
     borderWidth: 1, borderColor: colors.info + '30',
   },
   overridePlayerText: { color: colors.info, fontSize: 11, fontWeight: '800' },
   overrideScenBadge: {
-    backgroundColor: colors.danger + '18', borderRadius: 7, paddingHorizontal: 9, paddingVertical: 4,
-    borderWidth: 1, borderColor: colors.danger + '30',
+    backgroundColor: colors.warning + '15', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: colors.warning + '30',
   },
-  overrideScenText: { color: colors.danger, fontSize: 10, fontWeight: '800' },
+  overrideScenText: { color: colors.warning, fontSize: 10, fontWeight: '800' },
   replacementCard: {
-    flexDirection: 'row', backgroundColor: colors.bgDropdown, borderRadius: 11, padding: 12,
-    borderWidth: 1, borderColor: colors.warning + '25', gap: 10,
+    flexDirection: 'row', backgroundColor: colors.bgDropdown, borderRadius: 11, padding: 10,
+    borderWidth: 1, borderColor: colors.warning, borderStyle: 'dashed', gap: 8,
   },
   replacementIcon: { fontSize: 20, marginTop: 2 },
   replacementTitle: { fontSize: 14, fontWeight: '800', color: colors.warning },

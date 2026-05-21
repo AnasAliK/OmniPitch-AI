@@ -14,9 +14,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 
 const TABS = [
-  { name: 'index',     label: 'Squad',     emoji: '👥' },
-  { name: 'schedule',  label: 'Schedule',  emoji: '📅' },
-  { name: 'trace',     label: 'Trace',     emoji: '🧠' },
+  { name: 'index', label: 'Squad', emoji: '👥' },
+  { name: 'schedule', label: 'Schedule', emoji: '📅' },
+  { name: 'trace', label: 'Trace', emoji: '🧠' },
   { name: 'scenarios', label: 'Scenarios', emoji: '⚡' },
 ];
 
@@ -302,9 +302,9 @@ export default function TabLayout() {
         screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}
         tabBar={(props) => <FloatingTabBar {...props} />}
       >
-        <Tabs.Screen name="index"     options={{ title: 'Squad' }} />
-        <Tabs.Screen name="schedule"  options={{ title: 'Schedule' }} />
-        <Tabs.Screen name="trace"     options={{ title: 'Trace' }} />
+        <Tabs.Screen name="index" options={{ title: 'Squad' }} />
+        <Tabs.Screen name="schedule" options={{ title: 'Schedule' }} />
+        <Tabs.Screen name="trace" options={{ title: 'Trace' }} />
         <Tabs.Screen name="scenarios" options={{ title: 'Scenarios' }} />
       </Tabs>
     </View>

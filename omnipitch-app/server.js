@@ -2,8 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { chromium } = require('playwright');
-const Groq = require('groq-sdk');
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Groq AI removed as per request
 const got = require('got');
 
 const leagueStatsCache = {};
@@ -289,13 +288,26 @@ ${JSON.stringify({
       stats: player.stats
     }, null, 2)}`;
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.1-8b-instruct",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      })
     });
 
-    const analysis = JSON.parse(response.choices[0].message.content);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API Error: ${errText}`);
+    }
+
+    const data = await response.json();
+    const analysis = JSON.parse(data.choices[0].message.content);
     res.json(analysis);
   } catch (error) {
     console.error("Agent API error (Intervention):", error);
@@ -350,13 +362,26 @@ ${JSON.stringify(players.map(p => ({
       stats: p.stats
     })), null, 2)}`;
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" }
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.1-8b-instruct",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
+      })
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenRouter API Error: ${errText}`);
+    }
+
+    const data = await response.json();
+    const result = JSON.parse(data.choices[0].message.content);
     res.json(result.scenarios);
   } catch (error) {
     console.error("Agent API error (Scenarios):", error);
